@@ -1,0 +1,13 @@
+{
+  "event": "mock_remediation_flow",
+  "prompt": "Check container node:18 for vulnerabilities",
+  "route": [
+    "main_agent",
+    "container_image_agent",
+    "cve_intelligence_agent",
+    "decision_remediation_agent",
+    "verification_agent",
+    "notification_reporting_agent"
+  ],
+  "hash": "a4ff3c8d502b22c253e8d3325229f6ed66f2be1b03372a9ecb9eaf039e3eccb2"
+}

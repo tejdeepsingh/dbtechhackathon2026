@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVRC Chat</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">AVRC</p>
+          <h1>Agent Chat</h1>
+          <p class="summary">Route vulnerability prompts through scan, enrichment, remediation, verification, and reporting agents.</p>
+        </div>
+
+        <section class="settings" aria-label="Run settings">
+          <label>
+            Environment
+            <select id="environment">
+              <option value="development">development</option>
+              <option value="production">production</option>
+            </select>
+          </label>
+          <label>
+            Severity
+            <select id="severity">
+              <option value="">auto</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="critical">critical</option>
+            </select>
+          </label>
+          <label class="check">
+            <input id="approved" type="checkbox" />
+            Approved
+          </label>
+        </section>
+
+        <section class="examples" aria-label="Example prompts">
+          <button type="button" data-prompt="Scan Node.js app dependencies and fix CVEs">Dependencies</button>
+          <button type="button" data-prompt="Check container node:18 for vulnerabilities">Container</button>
+          <button type="button" data-prompt="Audit our GitHub Actions pipeline security">Pipeline</button>
+          <button type="button" data-prompt="Run DAST scan against http://localhost:3000">Runtime</button>
+        </section>
+      </aside>
+
+      <section class="chat-shell">
+        <header class="chat-header">
+          <div>
+            <strong>Autonomous Vulnerability Remediation Core</strong>
+            <span id="connection-status">Ready</span>
+          </div>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite">
+          <article class="message assistant">
+            <div class="avatar">A</div>
+            <div class="bubble">
+              <p>Send a vulnerability remediation request. I will show the selected route, policy result, and each mock tool step.</p>
+            </div>
+          </article>
+        </section>
+
+        <form id="chat-form" class="composer">
+          <textarea
+            id="prompt"
+            name="prompt"
+            rows="2"
+            placeholder="Ask AVRC to scan, enrich, remediate, verify, or report..."
+          >Scan Node.js app dependencies and fix CVEs</textarea>
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="/static/index.js"></script>
+  </body>
+</html>

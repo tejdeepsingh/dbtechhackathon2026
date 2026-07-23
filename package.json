@@ -1,0 +1,16 @@
+{
+  "name": "avrc-agentic-framework",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "build": "node --check src/server.mjs",
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3"
+  }
+}

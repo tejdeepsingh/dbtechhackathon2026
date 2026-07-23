@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "AVRC - Autonomous Vulnerability Remediation Core",
+    "port": 3000,
+    "outputDir": "output"
+  },
+  "policies": {
+    "restrictFileSystemWrite": {
+      "enabled": true,
+      "allowedRoot": "output"
+    },
+    "preventHarmfulContent": {
+      "enabled": true,
+      "blockedKeywords": ["malware", "credential theft", "persistence backdoor"]
+    },
+    "remediationApprovalGate": {
+      "enabled": true,
+      "requiresApprovalForSeverities": ["critical", "high"],
+      "requiresApprovalInEnvironments": ["production", "prod"]
+    }
+  },
+  "agents": [
+    { "name": "main_agent", "class": "MainAgent" },
+    { "name": "defectdojo_api_agent", "class": "DefectDojoApiAgent" },
+    { "name": "ci_cd_pipeline_agent", "class": "CiCdPipelineAgent" },
+    { "name": "container_image_agent", "class": "ContainerImageAgent" },
+    { "name": "dependency_agent", "class": "DependencyAgent" },
+    { "name": "os_vulnerability_agent", "class": "OsVulnerabilityAgent" },
+    { "name": "runtime_agent", "class": "RuntimeAgent" },
+    { "name": "cve_intelligence_agent", "class": "CveIntelligenceAgent" },
+    { "name": "decision_remediation_agent", "class": "DecisionRemediationAgent" },
+    { "name": "verification_agent", "class": "VerificationAgent" },
+    { "name": "notification_reporting_agent", "class": "NotificationReportingAgent" }
+  ],
+  "tools": [
+    { "name": "tool_1", "class": "Tool1" },
+    { "name": "defectdojo_api_tool", "class": "DefectDojoApiTool" },
+    { "name": "pipeline_lint_tool", "class": "PipelineLintTool" },
+    { "name": "container_scan_tool", "class": "ContainerScanTool" },
+    { "name": "dependency_patch_tool", "class": "DependencyPatchTool" },
+    { "name": "os_pkg_upgrade_tool", "class": "OsPkgUpgradeTool" },
+    { "name": "dynamic_software_scan_tool", "class": "DynamicSoftwareScanTool" },
+    { "name": "remediation_decision_tool", "class": "RemediationDecisionTool" },
+    { "name": "audit_logger_tool", "class": "AuditLoggerTool" },
+    { "name": "cve_lookup_tool", "class": "CveLookupTool" },
+    { "name": "git_ops_tool", "class": "GitOpsTool" },
+    { "name": "verification_scan_tool", "class": "VerificationScanTool" },
+    { "name": "notification_tool", "class": "NotificationTool" },
+    { "name": "report_generator_tool", "class": "ReportGeneratorTool" },
+    { "name": "report_generator_tool_shared", "class": "ReportGeneratorTool" }
+  ]
+}
