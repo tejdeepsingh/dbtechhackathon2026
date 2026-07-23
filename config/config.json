@@ -4,6 +4,16 @@
     "port": 3000,
     "outputDir": "output"
   },
+  "llm": {
+    "provider": "ollama",
+    "baseUrl": "http://localhost:11434",
+    "chatEndpoint": "/api/chat",
+    "model": "qwen2.5-coder:7b",
+    "temperature": 0.2,
+    "contextLength": 32768,
+    "timeoutMs": 120000,
+    "systemPrompt": "You are AVRC's main remediation reasoning model. Classify vulnerability requests, choose the safest agent route, prefer structured JSON decisions, and never bypass approval gates for high or critical production remediation. pass the prompts back to chat on what step are you doing and provide confidence reasoning"
+  },
   "policies": {
     "restrictFileSystemWrite": {
       "enabled": true,
@@ -33,20 +43,182 @@
     { "name": "notification_reporting_agent", "class": "NotificationReportingAgent" }
   ],
   "tools": [
-    { "name": "tool_1", "class": "Tool1" },
-    { "name": "defectdojo_api_tool", "class": "DefectDojoApiTool" },
-    { "name": "pipeline_lint_tool", "class": "PipelineLintTool" },
-    { "name": "container_scan_tool", "class": "ContainerScanTool" },
-    { "name": "dependency_patch_tool", "class": "DependencyPatchTool" },
-    { "name": "os_pkg_upgrade_tool", "class": "OsPkgUpgradeTool" },
-    { "name": "dynamic_software_scan_tool", "class": "DynamicSoftwareScanTool" },
-    { "name": "remediation_decision_tool", "class": "RemediationDecisionTool" },
-    { "name": "audit_logger_tool", "class": "AuditLoggerTool" },
-    { "name": "cve_lookup_tool", "class": "CveLookupTool" },
-    { "name": "git_ops_tool", "class": "GitOpsTool" },
-    { "name": "verification_scan_tool", "class": "VerificationScanTool" },
-    { "name": "notification_tool", "class": "NotificationTool" },
-    { "name": "report_generator_tool", "class": "ReportGeneratorTool" },
-    { "name": "report_generator_tool_shared", "class": "ReportGeneratorTool" }
+    {
+      "name": "tool_1",
+      "class": "Tool1",
+      "type": "local",
+      "description": "Local mock utility tool retained for smoke tests"
+    },
+    {
+      "name": "defectdojo_api_tool",
+      "class": "DefectDojoApiTool",
+      "type": "api",
+      "baseUrl": "http://defectdojo-api-tool:8080",
+      "endpoints": {
+        "listProducts": "/products",
+        "listFindings": "/findings",
+        "importScan": "/import-scan",
+        "health": "/health"
+      },
+      "timeoutMs": 30000
+    },
+    {
+      "name": "pipeline_lint_tool",
+      "class": "PipelineLintTool",
+      "type": "api",
+      "baseUrl": "http://pipeline-lint-tool:8080",
+      "endpoints": {
+        "lintPipeline": "/lint",
+        "scan": "/scan",
+        "health": "/health"
+      },
+      "timeoutMs": 30000
+    },
+    {
+      "name": "container_scan_tool",
+      "class": "ContainerScanTool",
+      "type": "api",
+      "baseUrl": "http://container-scan-tool:8080",
+      "endpoints": {
+        "scanImage": "/scan/image",
+        "scan": "/scan",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "dependency_patch_tool",
+      "class": "DependencyPatchTool",
+      "type": "api",
+      "baseUrl": "http://dependency-patch-tool:8080",
+      "endpoints": {
+        "scanDependencies": "/dependencies/scan",
+        "patchDependencies": "/dependencies/patch",
+        "scan": "/scan",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "os_pkg_upgrade_tool",
+      "class": "OsPkgUpgradeTool",
+      "type": "api",
+      "baseUrl": "http://os-pkg-upgrade-tool:8080",
+      "endpoints": {
+        "scanPackages": "/os/packages/scan",
+        "upgradePackage": "/os/packages/upgrade",
+        "scan": "/scan",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "dynamic_software_scan_tool",
+      "class": "DynamicSoftwareScanTool",
+      "type": "api",
+      "baseUrl": "http://dynamic-software-scan-tool:8080",
+      "endpoints": {
+        "scanTarget": "/dast/scan",
+        "scan": "/scan",
+        "health": "/health"
+      },
+      "timeoutMs": 120000
+    },
+    {
+      "name": "remediation_decision_tool",
+      "class": "RemediationDecisionTool",
+      "type": "api",
+      "baseUrl": "http://remediation-decision-tool:8080",
+      "endpoints": {
+        "selectStrategy": "/remediation/decide",
+        "applyFix": "/remediation/apply",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "audit_logger_tool",
+      "class": "AuditLoggerTool",
+      "type": "api",
+      "baseUrl": "http://audit-logger-tool:8080",
+      "endpoints": {
+        "writeAuditEvent": "/audit/events",
+        "health": "/health"
+      },
+      "timeoutMs": 30000
+    },
+    {
+      "name": "cve_lookup_tool",
+      "class": "CveLookupTool",
+      "type": "api",
+      "baseUrl": "http://cve-lookup-tool:8080",
+      "endpoints": {
+        "lookup": "/cve/lookup",
+        "bulkLookup": "/cve/bulk-lookup",
+        "health": "/health"
+      },
+      "timeoutMs": 30000
+    },
+    {
+      "name": "git_ops_tool",
+      "class": "GitOpsTool",
+      "type": "api",
+      "baseUrl": "http://git-ops-tool:8080",
+      "endpoints": {
+        "createBranch": "/git/branch",
+        "commitPatch": "/git/commit",
+        "openPullRequest": "/git/pull-request",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "verification_scan_tool",
+      "class": "VerificationScanTool",
+      "type": "api",
+      "baseUrl": "http://verification-scan-tool:8080",
+      "endpoints": {
+        "verifyFix": "/verify",
+        "health": "/health"
+      },
+      "timeoutMs": 120000
+    },
+    {
+      "name": "notification_tool",
+      "class": "NotificationTool",
+      "type": "api",
+      "baseUrl": "http://notification-tool:8080",
+      "endpoints": {
+        "sendSlack": "/notify/slack",
+        "sendEmail": "/notify/email",
+        "sendDigest": "/notify/digest",
+        "health": "/health"
+      },
+      "timeoutMs": 30000
+    },
+    {
+      "name": "report_generator_tool",
+      "class": "ReportGeneratorTool",
+      "type": "api",
+      "baseUrl": "http://report-generator-tool:8080",
+      "endpoints": {
+        "generateExecutiveSummary": "/reports/executive-summary",
+        "generateHtml": "/reports/html",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "report_generator_tool_shared",
+      "class": "ReportGeneratorTool",
+      "type": "api",
+      "baseUrl": "http://report-generator-tool:8080",
+      "endpoints": {
+        "generateExecutiveSummary": "/reports/executive-summary",
+        "generateHtml": "/reports/html",
+        "health": "/health"
+      },
+      "timeoutMs": 60000
+    }
   ]
 }

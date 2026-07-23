@@ -61,6 +61,66 @@ function renderSteps(payload) {
   `;
 }
 
+function renderProgressShell() {
+  return `
+    <div class="live-run">
+      <div class="status running">
+        <strong>running</strong>
+        <span>AVRC is working through the route.</span>
+      </div>
+      <ol class="progress-feed"></ol>
+    </div>
+  `;
+}
+
+function appendProgress(container, event) {
+  const feed = container.querySelector('.progress-feed');
+  if (!feed) return;
+
+  const details = event.details
+    ? `<details><summary>Details</summary><pre>${escapeHtml(JSON.stringify(event.details, null, 2))}</pre></details>`
+    : '';
+  const route = event.route ? `<p class="route">${escapeHtml(event.route.join(' -> '))}</p>` : '';
+
+  feed.insertAdjacentHTML(
+    'beforeend',
+    `
+      <li>
+        <span class="dot ${escapeHtml(event.status ?? 'running')}"></span>
+        <div>
+          <strong>${escapeHtml(event.agent ?? 'agent')}</strong>
+          ${event.tool ? `<em>${escapeHtml(event.tool)}.${escapeHtml(event.operation ?? 'run')}</em>` : ''}
+          <p>${escapeHtml(event.message ?? event.status ?? 'Progress update')}</p>
+          ${route}
+          ${details}
+        </div>
+      </li>
+    `,
+  );
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function parseSseChunk(buffer, onEvent) {
+  const events = buffer.split('\n\n');
+  const remainder = events.pop() ?? '';
+
+  for (const rawEvent of events) {
+    const lines = rawEvent.split('\n');
+    const eventName = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() ?? 'message';
+    const data = lines
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trim())
+      .join('\n');
+
+    if (data) {
+      onEvent(eventName, JSON.parse(data));
+    }
+  }
+
+  return remainder;
+}
+
 async function sendPrompt() {
   const prompt = promptInput.value.trim();
   if (!prompt) return;
@@ -69,11 +129,12 @@ async function sendPrompt() {
   promptInput.value = '';
   promptInput.style.height = '';
 
-  const pending = addMessage('assistant', '<p class="muted">Agents are running...</p>');
+  const pending = addMessage('assistant', renderProgressShell());
+  const bubble = pending.querySelector('.bubble');
   connectionStatus.textContent = 'Running';
 
   try {
-    const response = await fetch('/chat', {
+    const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -84,11 +145,32 @@ async function sendPrompt() {
       }),
     });
 
-    const payload = await response.json();
-    pending.querySelector('.bubble').innerHTML = renderSteps(payload);
-    connectionStatus.textContent = payload.status === 'success' ? 'Complete' : payload.status;
+    if (!response.ok || !response.body) {
+      throw new Error(`Request failed with HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      buffer = parseSseChunk(buffer, (eventName, payload) => {
+        if (eventName === 'final') {
+          bubble.innerHTML = renderSteps(payload);
+          connectionStatus.textContent = payload.status === 'success' ? 'Complete' : payload.status;
+          return;
+        }
+
+        appendProgress(bubble, payload);
+        connectionStatus.textContent = payload.status ?? 'Running';
+      });
+    }
   } catch (error) {
-    pending.querySelector('.bubble').innerHTML = `<p>Request failed: ${escapeHtml(error.message)}</p>`;
+    bubble.innerHTML = `<p>Request failed: ${escapeHtml(error.message)}</p>`;
     connectionStatus.textContent = 'Error';
   }
 

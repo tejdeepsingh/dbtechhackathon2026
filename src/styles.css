@@ -218,6 +218,63 @@ select {
   color: #8a5300;
 }
 
+.status.running strong,
+.status.accepted strong,
+.status.mock-fallback strong,
+.status.local-fallback strong {
+  background: #e8eef8;
+  color: #1d3557;
+}
+
+.progress-feed {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.progress-feed li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #8aa0bb;
+}
+
+.dot.running,
+.dot.accepted {
+  background: #174ea6;
+}
+
+.dot.success {
+  background: #16844a;
+}
+
+.dot.mock-fallback,
+.dot.local-fallback {
+  background: #b7791f;
+}
+
+.dot.blocked,
+.dot.error,
+.dot.needs_approval {
+  background: #b42318;
+}
+
+.progress-feed em {
+  display: block;
+  color: #536174;
+  font-style: normal;
+  font-size: 0.9rem;
+}
+
 .timeline {
   display: grid;
   gap: 10px;

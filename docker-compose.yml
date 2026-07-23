@@ -1,0 +1,256 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: avrc-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - avrc-net
+
+  ollama-pull-qwen:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: ["pull", "qwen2.5-coder:7b"]
+    networks:
+      - avrc-net
+
+  avrc-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avrc-orchestrator
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - ./output:/app/output
+    depends_on:
+      ollama:
+        condition: service_healthy
+      defectdojo-api-tool:
+        condition: service_healthy
+      pipeline-lint-tool:
+        condition: service_healthy
+      container-scan-tool:
+        condition: service_healthy
+      dependency-patch-tool:
+        condition: service_healthy
+      cve-lookup-tool:
+        condition: service_healthy
+    networks:
+      - avrc-net
+
+  defectdojo-api-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: defectdojo_api_tool
+    ports:
+      - "4010:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  pipeline-lint-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: pipeline_lint_tool
+    ports:
+      - "4020:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  container-scan-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: container_scan_tool
+    ports:
+      - "4030:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  dependency-patch-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: dependency_patch_tool
+    ports:
+      - "4040:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  os-pkg-upgrade-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: os_pkg_upgrade_tool
+    ports:
+      - "4050:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  dynamic-software-scan-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: dynamic_software_scan_tool
+    ports:
+      - "4060:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  remediation-decision-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: remediation_decision_tool
+    ports:
+      - "4070:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  audit-logger-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: audit_logger_tool
+    ports:
+      - "4080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  cve-lookup-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: cve_lookup_tool
+    ports:
+      - "4090:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  git-ops-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: git_ops_tool
+    ports:
+      - "4100:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  verification-scan-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: verification_scan_tool
+    ports:
+      - "4110:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  notification-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: notification_tool
+    ports:
+      - "4120:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  report-generator-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: report_generator_tool
+    ports:
+      - "4130:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+networks:
+  avrc-net:
+    driver: bridge
+
+volumes:
+  ollama-data:

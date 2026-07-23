@@ -21,6 +21,11 @@ function json(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function sse(res, event, payload) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
 async function body(req) {
   const chunks = [];
   for await (const chunk of req) {
@@ -73,6 +78,37 @@ async function handle(req, res) {
       return;
     }
     json(res, 200, await mainAgent.handle(request));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/chat/stream') {
+    const request = await body(req);
+    if (!request.prompt) {
+      json(res, 400, { status: 'error', message: 'prompt is required' });
+      return;
+    }
+
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    });
+
+    sse(res, 'progress', {
+      type: 'progress',
+      agent: 'server',
+      status: 'accepted',
+      message: 'Streaming AVRC agent progress.',
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await mainAgent.handle(request, {
+      onProgress: (event) => sse(res, event.type ?? 'progress', event),
+    });
+
+    sse(res, 'final', result);
+    res.end();
     return;
   }
 

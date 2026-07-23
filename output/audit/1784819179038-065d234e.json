@@ -1,0 +1,13 @@
+{
+  "event": "mock_remediation_flow",
+  "prompt": "Scan Node.js app dependencies and fix CVEs",
+  "route": [
+    "main_agent",
+    "dependency_agent",
+    "cve_intelligence_agent",
+    "decision_remediation_agent",
+    "verification_agent",
+    "notification_reporting_agent"
+  ],
+  "hash": "065d234e733bff8af17e5d0705bb1f3b4a102fdcff2e28e39f362d68f70a10f8"
+}
