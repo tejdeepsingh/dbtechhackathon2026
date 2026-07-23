@@ -1,0 +1,8 @@
+[project]
+name = "pipeline_lint_tool"
+version = "1.0.0"
+description = "Automatically apply JSON changes and create GitHub Pull Requests"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath=["."]

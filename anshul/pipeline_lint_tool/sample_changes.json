@@ -1,0 +1,28 @@
+{
+  "github_token": "ghp_XXXXXXXXXXXXXXXXXXXXXXX",
+  "workspace": "lko-anshul",
+
+  "repo": "https://github.com/lko-anshul/test-repo.git",
+
+  "base_branch": "main",
+  "new_branch": "automation/readme-update",
+
+  "commit_message": "Automated README update",
+
+  "pr_title": "Automation PR",
+
+  "pr_body": "Created automatically.",
+
+  "changes": [
+    {
+      "operation": "update",
+      "path": "README.md",
+      "content": "# Updated README"
+    },
+    {
+      "operation": "create",
+      "path": "hello.py",
+      "content": "print('Hello')"
+    }
+  ]
+}
