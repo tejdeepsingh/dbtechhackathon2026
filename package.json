@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node src/server.mjs",
     "build": "node --check src/server.mjs",
-    "start": "node src/server.mjs"
+    "start": "node src/server.mjs",
+    "seed:fake-apps": "node scripts/seed-fake-apps.mjs --count 1000"
   },
   "dependencies": {},
   "devDependencies": {

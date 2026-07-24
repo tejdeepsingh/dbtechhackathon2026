@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 COPY config ./config
+COPY data ./data
 COPY src ./src
 
 ENV NODE_ENV=production

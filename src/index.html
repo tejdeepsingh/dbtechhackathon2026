@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AVRC Chat</title>
+    <title>Advanced Vanguard for Rapid Containment (AVRC)</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -11,11 +11,41 @@
       <aside class="sidebar">
         <div>
           <p class="eyebrow">AVRC</p>
-          <h1>Agent Chat</h1>
+          <h1>Advanced Vanguard for Rapid Containment</h1>
           <p class="summary">Route vulnerability prompts through scan, enrichment, remediation, verification, and reporting agents.</p>
         </div>
 
         <section class="settings" aria-label="Run settings">
+          <div class="llm-panel">
+            <div class="panel-title">
+              <span>Local LLM</span>
+              <span id="llm-status" class="pill">checking</span>
+            </div>
+            <label>
+              Model
+              <select id="llm-model">
+                <option value="">Loading models...</option>
+              </select>
+            </label>
+            <label>
+              Timeout
+              <select id="llm-timeout">
+                <option value="15000">15s</option>
+                <option value="30000" selected>30s</option>
+                <option value="60000">60s</option>
+              </select>
+            </label>
+            <label class="check">
+              <input id="llm-unload-after-test" type="checkbox" />
+              Unload after test
+            </label>
+            <div class="llm-actions">
+              <button id="refresh-models" type="button">Refresh</button>
+              <button id="test-llm" type="button">Test</button>
+              <button id="unload-llm" type="button">Unload</button>
+            </div>
+            <p id="llm-test-result" class="mini-log">Ollama status will appear here.</p>
+          </div>
           <label>
             Environment
             <select id="environment">
@@ -39,17 +69,99 @@
         </section>
 
         <section class="examples" aria-label="Example prompts">
-          <button type="button" data-prompt="Scan Node.js app dependencies and fix CVEs">Dependencies</button>
-          <button type="button" data-prompt="Check container node:18 for vulnerabilities">Container</button>
-          <button type="button" data-prompt="Audit our GitHub Actions pipeline security">Pipeline</button>
-          <button type="button" data-prompt="Run DAST scan against http://localhost:3000">Runtime</button>
+          <button type="button" data-prompt="Scan APP-00001 for vulnerabilities">APP-00001</button>
+          <button type="button" data-prompt="Check APP-00015 container image for CVEs">Container</button>
+          <button type="button" data-prompt="Run security scan on payments-service in production">Payments</button>
+          <button type="button" data-prompt="Scan APP-00042 repo and fix dependencies">Dependencies</button>
         </section>
       </aside>
 
       <section class="chat-shell">
+        <!-- Dashboard Panel -->
+        <section id="dashboard" class="dashboard">
+          <div id="dashboard-banner" class="dashboard-banner">
+            <div class="banner-icon">🛡️</div>
+            <div class="banner-content">
+              <h2>AVRC &mdash; Advanced cyberhygiene doctor</h2>
+              <p>Provide an <strong>APP-ID</strong> or application name to begin scanning. The system will automatically:</p>
+              <ul>
+                <li>Resolve application context from inventory (1000+ apps)</li>
+                <li>Run multi-tool security scans (Trivy, Semgrep, Renovate, OSV, ZAP…)</li>
+                <li>Deduplicate & enrich findings with CVE intelligence</li>
+                <li>Propose remediation and open pull requests on Forgejo</li>
+              </ul>
+              <p class="banner-hint">💡 Try: <code>Scan APP-00001</code> or <code>Fix loans-service-0002</code></p>
+            </div>
+          </div>
+
+          <div id="dashboard-report" class="dashboard-report hidden">
+            <div class="report-header">
+              <div class="report-title">
+                <h2 id="report-app-name">—</h2>
+                <span id="report-app-id" class="pill">—</span>
+                <span id="report-env" class="pill env-pill">—</span>
+              </div>
+              <div class="report-timestamp" id="report-timestamp"></div>
+            </div>
+
+            <div class="vuln-cards">
+              <div class="vuln-card critical">
+                <span class="vuln-count" id="vuln-critical">0</span>
+                <span class="vuln-label">Critical</span>
+              </div>
+              <div class="vuln-card high">
+                <span class="vuln-count" id="vuln-high">0</span>
+                <span class="vuln-label">High</span>
+              </div>
+              <div class="vuln-card medium">
+                <span class="vuln-count" id="vuln-medium">0</span>
+                <span class="vuln-label">Medium</span>
+              </div>
+              <div class="vuln-card low">
+                <span class="vuln-count" id="vuln-low">0</span>
+                <span class="vuln-label">Low</span>
+              </div>
+            </div>
+
+            <div class="report-details">
+              <div class="report-col">
+                <h3>Scan Summary</h3>
+                <table class="report-table" id="report-summary-table">
+                  <tbody>
+                    <tr><td>Agents Invoked</td><td id="rpt-agents">—</td></tr>
+                    <tr><td>Tools Executed</td><td id="rpt-tools">—</td></tr>
+                    <tr><td>Unique CVEs</td><td id="rpt-unique-cves">—</td></tr>
+                    <tr><td>Duplicates Removed</td><td id="rpt-dupes">—</td></tr>
+                    <tr><td>Scan Scopes</td><td id="rpt-scopes">—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="report-col">
+                <h3>Top Findings</h3>
+                <ul id="report-findings" class="findings-list"></ul>
+              </div>
+            </div>
+
+            <div class="hitl-panel" id="hitl-panel">
+              <div class="hitl-header">
+                <span class="hitl-icon">⚠️</span>
+                <div>
+                  <strong>Human-in-the-Loop Approval Required</strong>
+                  <p id="hitl-message">Remediation actions are ready. Review findings above and approve to proceed with PR creation and patching.</p>
+                </div>
+              </div>
+              <div class="hitl-actions">
+                <button id="hitl-approve" class="hitl-btn approve" type="button">✓ Approve & Remediate</button>
+                <button id="hitl-reject" class="hitl-btn reject" type="button">✕ Reject</button>
+                <button id="hitl-rescan" class="hitl-btn rescan" type="button">↻ Re-scan</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <header class="chat-header">
           <div>
-            <strong>Autonomous Vulnerability Remediation Core</strong>
+            <strong>Advanced Vanguard for Rapid Containment</strong>
             <span id="connection-status">Ready</span>
           </div>
         </header>
@@ -58,7 +170,9 @@
           <article class="message assistant">
             <div class="avatar">A</div>
             <div class="bubble">
-              <p>Send a vulnerability remediation request. I will show the selected route, policy result, and each mock tool step.</p>
+              <p><strong>Welcome to Advanced Vanguard for Rapid Containment (AVRC).</strong> I scan applications for vulnerabilities and prepare remediation pull requests.</p>
+              <p>To get started, tell me an <strong>APP-ID</strong> (e.g. <code>APP-00042</code>) or an application name. I'll look it up in the inventory, identify scan targets, and run the appropriate security tools.</p>
+              <p style="font-size:0.85em;opacity:0.8">Example: "Scan APP-00015" or "Check payments-service for CVEs"</p>
             </div>
           </article>
         </section>
@@ -68,8 +182,8 @@
             id="prompt"
             name="prompt"
             rows="2"
-            placeholder="Ask AVRC to scan, enrich, remediate, verify, or report..."
-          >Scan Node.js app dependencies and fix CVEs</textarea>
+            placeholder="Enter APP-ID or app name, e.g. &quot;Scan APP-00042&quot; or &quot;Fix CVEs in loans-service&quot;"
+          ></textarea>
           <button type="submit">Send</button>
         </form>
       </section>

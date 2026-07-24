@@ -6,13 +6,23 @@
   },
   "llm": {
     "provider": "ollama",
-    "baseUrl": "http://localhost:11434",
+    "baseUrl": "http://host.docker.internal:11434",
     "chatEndpoint": "/api/chat",
     "model": "qwen2.5-coder:7b",
     "temperature": 0.2,
     "contextLength": 32768,
-    "timeoutMs": 120000,
+    "timeoutMs": 30000,
+    "keepAlive": "30s",
+    "testPrompt": "Reply with exactly: AVRC_LLM_OK",
     "systemPrompt": "You are AVRC's main remediation reasoning model. Classify vulnerability requests, choose the safest agent route, prefer structured JSON decisions, and never bypass approval gates for high or critical production remediation. pass the prompts back to chat on what step are you doing and provide confidence reasoning"
+  },
+  "gitOps": {
+    "provider": "forgejo",
+    "baseUrl": "http://forgejo:3000",
+    "externalUrl": "http://localhost:3001",
+    "defaultBaseBranch": "main",
+    "tokenEnv": "FORGEJO_TOKEN",
+    "projectEnv": "FORGEJO_REPO"
   },
   "policies": {
     "restrictFileSystemWrite": {
@@ -37,6 +47,17 @@
     { "name": "dependency_agent", "class": "DependencyAgent" },
     { "name": "os_vulnerability_agent", "class": "OsVulnerabilityAgent" },
     { "name": "runtime_agent", "class": "RuntimeAgent" },
+    { "name": "trivy_agent", "class": "ScannerAgent", "scanner": "Trivy" },
+    { "name": "renovate_agent", "class": "ScannerAgent", "scanner": "Renovate CLI" },
+    { "name": "copacetic_agent", "class": "ScannerAgent", "scanner": "Copacetic" },
+    { "name": "kubescape_agent", "class": "ScannerAgent", "scanner": "Kubescape" },
+    { "name": "wazuh_agent", "class": "ScannerAgent", "scanner": "Wazuh" },
+    { "name": "greenbone_agent", "class": "ScannerAgent", "scanner": "Greenbone Community/OpenVAS" },
+    { "name": "zap_agent", "class": "ScannerAgent", "scanner": "OWASP ZAP" },
+    { "name": "semgrep_agent", "class": "ScannerAgent", "scanner": "Semgrep OSS" },
+    { "name": "openrewrite_agent", "class": "ScannerAgent", "scanner": "OpenRewrite" },
+    { "name": "osv_agent", "class": "ScannerAgent", "scanner": "OSV.dev" },
+    { "name": "nvd_agent", "class": "ScannerAgent", "scanner": "NVD" },
     { "name": "cve_intelligence_agent", "class": "CveIntelligenceAgent" },
     { "name": "decision_remediation_agent", "class": "DecisionRemediationAgent" },
     { "name": "verification_agent", "class": "VerificationAgent" },
@@ -164,9 +185,11 @@
       "class": "GitOpsTool",
       "type": "api",
       "baseUrl": "http://git-ops-tool:8080",
+      "localFallbackUrl": "http://localhost:4100",
       "endpoints": {
         "createBranch": "/git/branch",
         "commitPatch": "/git/commit",
+        "checkFileExists": "/git/file-exists",
         "openPullRequest": "/git/pull-request",
         "health": "/health"
       },
@@ -219,6 +242,188 @@
         "health": "/health"
       },
       "timeoutMs": 60000
+    },
+    {
+      "name": "trivy_scan_tool",
+      "class": "TrivyScanTool",
+      "type": "api",
+      "baseUrl": "http://trivy-scan-tool:8080",
+      "localFallbackUrl": "http://localhost:4140",
+      "endpoints": {
+        "scan": "/trivy/scan",
+        "repo": "/trivy/repo",
+        "image": "/trivy/image",
+        "config": "/trivy/config",
+        "sbom": "/trivy/sbom",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 300000
+    },
+    {
+      "name": "renovate_fix_tool",
+      "class": "RenovateFixTool",
+      "type": "api",
+      "baseUrl": "http://renovate-fix-tool:8080",
+      "localFallbackUrl": "http://localhost:4150",
+      "endpoints": {
+        "scan": "/renovate/scan",
+        "remediate": "/renovate/remediate",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 300000
+    },
+    {
+      "name": "copacetic_patch_tool",
+      "class": "CopaceticPatchTool",
+      "type": "api",
+      "baseUrl": "http://copacetic-patch-tool:8080",
+      "endpoints": {
+        "scan": "/copa/scan",
+        "remediate": "/copa/patch",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 300000
+    },
+    {
+      "name": "kubescape_scan_tool",
+      "class": "KubescapeScanTool",
+      "type": "api",
+      "baseUrl": "http://kubescape-scan-tool:8080",
+      "endpoints": {
+        "scan": "/kubescape/scan",
+        "remediate": "/kubescape/remediate",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 300000
+    },
+    {
+      "name": "wazuh_vulnerability_tool",
+      "class": "WazuhVulnerabilityTool",
+      "type": "api",
+      "baseUrl": "http://wazuh-vulnerability-tool:8080",
+      "endpoints": {
+        "scan": "/wazuh/vulnerabilities",
+        "remediate": "/wazuh/remediate",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 120000
+    },
+    {
+      "name": "greenbone_scan_tool",
+      "class": "GreenboneScanTool",
+      "type": "api",
+      "baseUrl": "http://greenbone-scan-tool:8080",
+      "endpoints": {
+        "scan": "/greenbone/scan",
+        "remediate": "/greenbone/remediate",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 180000
+    },
+    {
+      "name": "zap_dast_tool",
+      "class": "ZapDastTool",
+      "type": "api",
+      "baseUrl": "http://zap-dast-tool:8080",
+      "endpoints": {
+        "scan": "/zap/scan",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 180000
+    },
+    {
+      "name": "semgrep_scan_tool",
+      "class": "SemgrepScanTool",
+      "type": "api",
+      "baseUrl": "http://semgrep-scan-tool:8080",
+      "localFallbackUrl": "http://localhost:4210",
+      "endpoints": {
+        "scan": "/semgrep/scan",
+        "remediate": "/semgrep/autofix",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 300000
+    },
+    {
+      "name": "openrewrite_remediation_tool",
+      "class": "OpenRewriteRemediationTool",
+      "type": "api",
+      "baseUrl": "http://openrewrite-remediation-tool:8080",
+      "endpoints": {
+        "scan": "/openrewrite/discover",
+        "remediate": "/openrewrite/remediate",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 120000
+    },
+    {
+      "name": "osv_lookup_tool",
+      "class": "OsvLookupTool",
+      "type": "api",
+      "baseUrl": "http://osv-lookup-tool:8080",
+      "localFallbackUrl": "http://localhost:4230",
+      "endpoints": {
+        "lookup": "/osv/lookup",
+        "scan": "/osv/scan",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 60000
+    },
+    {
+      "name": "nvd_lookup_tool",
+      "class": "NvdLookupTool",
+      "type": "api",
+      "baseUrl": "http://nvd-lookup-tool:8080",
+      "endpoints": {
+        "lookup": "/nvd/lookup",
+        "scan": "/nvd/scan",
+        "health": "/health"
+      },
+      "dedupe": {
+        "enabled": true,
+        "key": "canonical_cve_id"
+      },
+      "timeoutMs": 30000
     }
   ]
 }

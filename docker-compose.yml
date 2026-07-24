@@ -1,30 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: avrc-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - avrc-net
-
-  ollama-pull-qwen:
-    image: ollama/ollama:latest
-    depends_on:
-      ollama:
-        condition: service_healthy
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    command: ["pull", "qwen2.5-coder:7b"]
-    networks:
-      - avrc-net
-
   avrc-orchestrator:
     build:
       context: .
@@ -35,11 +9,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./output:/app/output
     depends_on:
-      ollama:
-        condition: service_healthy
       defectdojo-api-tool:
         condition: service_healthy
       pipeline-lint-tool:
@@ -49,6 +23,28 @@ services:
       dependency-patch-tool:
         condition: service_healthy
       cve-lookup-tool:
+        condition: service_healthy
+      trivy-scan-tool:
+        condition: service_healthy
+      renovate-fix-tool:
+        condition: service_healthy
+      copacetic-patch-tool:
+        condition: service_healthy
+      kubescape-scan-tool:
+        condition: service_healthy
+      wazuh-vulnerability-tool:
+        condition: service_healthy
+      greenbone-scan-tool:
+        condition: service_healthy
+      zap-dast-tool:
+        condition: service_healthy
+      semgrep-scan-tool:
+        condition: service_healthy
+      openrewrite-remediation-tool:
+        condition: service_healthy
+      osv-lookup-tool:
+        condition: service_healthy
+      nvd-lookup-tool:
         condition: service_healthy
     networks:
       - avrc-net
@@ -188,13 +184,45 @@ services:
     networks:
       - avrc-net
 
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:16.0.1
+    container_name: avrc-forgejo
+    hostname: forgejo
+    ports:
+      - "3001:3000"
+      - "2221:22"
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__server__DOMAIN: localhost
+      FORGEJO__server__ROOT_URL: http://localhost:3001/
+      FORGEJO__server__SSH_PORT: 2221
+    volumes:
+      - forgejo-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    networks:
+      - avrc-net
+
   git-ops-tool:
     build:
-      context: ./tools/mock_api_service
+      context: ./tools/git_ops_service
     environment:
-      TOOL_NAME: git_ops_tool
+      GIT_PROVIDER: forgejo
+      FORGEJO_BASE_URL: http://forgejo:3000
+      FORGEJO_TOKEN: ${FORGEJO_TOKEN:-}
+      FORGEJO_REPO: ${FORGEJO_REPO:-}
+      GIT_AUTHOR_NAME: ${GIT_AUTHOR_NAME:-AVRC Bot}
+      GIT_AUTHOR_EMAIL: ${GIT_AUTHOR_EMAIL:-avrc-bot@example.local}
     ports:
       - "4100:8080"
+    depends_on:
+      forgejo:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -248,9 +276,192 @@ services:
     networks:
       - avrc-net
 
+  trivy-scan-tool:
+    build:
+      context: ./tools/trivy_service
+    environment:
+      TRIVY_CACHE_DIR: /tmp/trivy-cache
+      TRIVY_TIMEOUT_SECONDS: 300
+      TRIVY_SEVERITY: LOW,MEDIUM,HIGH,CRITICAL
+      SCAN_INPUT_ROOT: /scan-input
+    volumes:
+      - ./scan-input:/scan-input:ro
+      - trivy-cache:/tmp/trivy-cache
+    ports:
+      - "4140:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  renovate-fix-tool:
+    build:
+      context: ./tools/renovate_service
+    environment:
+      RENOVATE_PLATFORM: forgejo
+      RENOVATE_ENDPOINT: http://forgejo:3000/api/v1
+      RENOVATE_DRY_RUN: full
+      RENOVATE_TIMEOUT_MS: 300000
+      FORGEJO_TOKEN: ${FORGEJO_TOKEN:-}
+      FORGEJO_REPO: ${FORGEJO_REPO:-}
+      RENOVATE_GIT_AUTHOR: ${GIT_AUTHOR_NAME:-AVRC Bot} <${GIT_AUTHOR_EMAIL:-avrc-bot@example.local}>
+    ports:
+      - "4150:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  copacetic-patch-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: copacetic_patch_tool
+    ports:
+      - "4160:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  kubescape-scan-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: kubescape_scan_tool
+    ports:
+      - "4170:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  wazuh-vulnerability-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: wazuh_vulnerability_tool
+    ports:
+      - "4180:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  greenbone-scan-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: greenbone_scan_tool
+    ports:
+      - "4190:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  zap-dast-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: zap_dast_tool
+    ports:
+      - "4200:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  semgrep-scan-tool:
+    build:
+      context: ./tools/semgrep_service
+    environment:
+      SEMGREP_CONFIG: p/default
+      SEMGREP_TIMEOUT_SECONDS: 300
+      SCAN_INPUT_ROOT: /scan-input
+    volumes:
+      - ./scan-input:/scan-input:ro
+    ports:
+      - "4210:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  openrewrite-remediation-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: openrewrite_remediation_tool
+    ports:
+      - "4220:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  osv-lookup-tool:
+    build:
+      context: ./tools/osv_service
+    environment:
+      OSV_API_BASE: https://api.osv.dev
+      OSV_TIMEOUT_MS: 30000
+    ports:
+      - "4230:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
+  nvd-lookup-tool:
+    build:
+      context: ./tools/mock_api_service
+    environment:
+      TOOL_NAME: nvd_lookup_tool
+    ports:
+      - "4240:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - avrc-net
+
 networks:
   avrc-net:
     driver: bridge
 
 volumes:
-  ollama-data:
+  forgejo-data:
+  trivy-cache:

@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-07-23T23:09:19.251Z",
+  "count": 1000,
+  "inventoryJson": "C:\\Users\\tejde\\tejcsdevwork\\dbtechhCKthon2026\\dbtechhCKthon2026\\data\\fake-applications.json",
+  "inventoryCsv": "C:\\Users\\tejde\\tejcsdevwork\\dbtechhCKthon2026\\dbtechhCKthon2026\\data\\fake-applications.csv",
+  "localRepos": null,
+  "forgejo": {
+    "owner": "tejdeep",
+    "created": 1000,
+    "updated": 0,
+    "failed": 0
+  },
+  "byEnvironment": {
+    "development": 143,
+    "qa": 143,
+    "staging": 143,
+    "production": 143,
+    "dr": 143,
+    "on-prem": 143,
+    "hybrid": 142
+  },
+  "byRuntime": {
+    "nodejs18": 166,
+    "java17-spring": 166,
+    "python3.11-fastapi": 167,
+    "go1.22": 167,
+    "dotnet8": 167,
+    "nginx-static": 167
+  }
+}
