@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { dirname, extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -266,6 +266,204 @@ function json(res, statusCode, payload) {
 function sse(res, event, payload) {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+const adminGetEndpoints = [
+  {
+    name: 'AVRC Health',
+    group: 'core',
+    groupLabel: 'Core App',
+    path: '/health',
+    publicUrl: 'http://localhost:3000/health',
+    probeUrls: ['http://127.0.0.1:3000/health'],
+  },
+  {
+    name: 'AVRC Agents',
+    group: 'core',
+    groupLabel: 'Core App',
+    path: '/agents',
+    publicUrl: 'http://localhost:3000/agents',
+    probeUrls: ['http://127.0.0.1:3000/agents'],
+  },
+  {
+    name: 'AVRC Tools',
+    group: 'core',
+    groupLabel: 'Core App',
+    path: '/tools',
+    publicUrl: 'http://localhost:3000/tools',
+    probeUrls: ['http://127.0.0.1:3000/tools'],
+  },
+  {
+    name: 'Audit Logs',
+    group: 'core',
+    groupLabel: 'Core App',
+    path: '/audit/logs?limit=25',
+    publicUrl: 'http://localhost:3000/audit/logs?limit=25',
+    probeUrls: ['http://127.0.0.1:3000/audit/logs?limit=25'],
+  },
+  {
+    name: 'LLM Models',
+    group: 'intel',
+    groupLabel: 'Intelligence',
+    path: '/llm/models',
+    publicUrl: 'http://localhost:3000/llm/models',
+    probeUrls: ['http://127.0.0.1:3000/llm/models'],
+  },
+  {
+    name: 'Forgejo UI',
+    group: 'services',
+    groupLabel: 'Platform Services',
+    path: '/',
+    publicUrl: 'http://localhost:3001/',
+    probeUrls: ['http://forgejo:3000/', 'http://localhost:3001/'],
+  },
+  {
+    name: 'GitOps Health',
+    group: 'gitops',
+    groupLabel: 'GitOps',
+    path: '/health',
+    publicUrl: 'http://localhost:4100/health',
+    probeUrls: ['http://git-ops-tool:8080/health', 'http://localhost:4100/health'],
+  },
+  {
+    name: 'Trivy Health',
+    group: 'scanning',
+    groupLabel: 'Scanning',
+    path: '/health',
+    publicUrl: 'http://localhost:4140/health',
+    probeUrls: ['http://trivy-scan-tool:8080/health', 'http://localhost:4140/health'],
+  },
+  {
+    name: 'Renovate Health',
+    group: 'scanning',
+    groupLabel: 'Scanning',
+    path: '/health',
+    publicUrl: 'http://localhost:4150/health',
+    probeUrls: ['http://renovate-fix-tool:8080/health', 'http://localhost:4150/health'],
+  },
+  {
+    name: 'Semgrep Health',
+    group: 'scanning',
+    groupLabel: 'Scanning',
+    path: '/health',
+    publicUrl: 'http://localhost:4210/health',
+    probeUrls: ['http://semgrep-scan-tool:8080/health', 'http://localhost:4210/health'],
+  },
+  {
+    name: 'OSV Health',
+    group: 'intel',
+    groupLabel: 'Intelligence',
+    path: '/health',
+    publicUrl: 'http://localhost:4230/health',
+    probeUrls: ['http://osv-lookup-tool:8080/health', 'http://localhost:4230/health'],
+  },
+];
+
+async function probeGetEndpoint(endpoint, includeData = false) {
+  const probeUrls = Array.isArray(endpoint.probeUrls) && endpoint.probeUrls.length
+    ? endpoint.probeUrls
+    : [endpoint.publicUrl];
+
+  let lastError = null;
+
+  for (const probeUrl of probeUrls) {
+    const started = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(probeUrl, {
+        method: 'GET',
+        headers: { accept: 'application/json, text/plain, */*' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const latencyMs = Date.now() - started;
+      const rawText = await response.text();
+      let parsed;
+      try {
+        parsed = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        parsed = rawText;
+      }
+
+      const preview = typeof parsed === 'string'
+        ? parsed.slice(0, 1000)
+        : parsed;
+
+      return {
+        ...endpoint,
+        ok: response.ok,
+        statusCode: response.status,
+        latencyMs,
+        responseType: response.headers.get('content-type') ?? 'unknown',
+        preview,
+        data: includeData ? parsed : undefined,
+        resolvedProbeUrl: probeUrl,
+      };
+    } catch (error) {
+      clearTimeout(timeout);
+      lastError = error;
+    }
+  }
+
+  return {
+    ...endpoint,
+    ok: false,
+    statusCode: null,
+    latencyMs: null,
+    responseType: null,
+    preview: null,
+    error: {
+      message: lastError instanceof Error ? lastError.message : 'Unknown probe error',
+    },
+  };
+}
+
+async function readAuditEntries({ limit = 25 } = {}) {
+  const auditDir = resolve(rootDir, 'output', 'audit');
+  const names = await readdir(auditDir).catch(() => []);
+
+  const files = names
+    .filter((name) => name.endsWith('.json'))
+    .sort((a, b) => b.localeCompare(a));
+
+  const selected = files.slice(0, Math.max(1, Math.min(200, Number(limit) || 25)));
+  const entries = [];
+
+  for (const fileName of selected) {
+    const fullPath = resolve(auditDir, fileName);
+    try {
+      const raw = await readFile(fullPath, 'utf-8');
+      const data = JSON.parse(raw);
+      entries.push({
+        file: fileName,
+        timestamp: data.timestamp ?? data.approvedAt ?? null,
+        action: data.action ?? data.event ?? 'unknown',
+        applicationId: data.applicationId ?? null,
+        applicationName: data.applicationName ?? null,
+        hash: data.hash ?? null,
+        data,
+      });
+    } catch {
+      entries.push({
+        file: fileName,
+        timestamp: null,
+        action: 'unreadable',
+        applicationId: null,
+        applicationName: null,
+        hash: null,
+        data: null,
+      });
+    }
+  }
+
+  return {
+    dir: auditDir,
+    count: entries.length,
+    entries,
+  };
 }
 
 function getSession(sessionId) {
@@ -948,6 +1146,11 @@ async function handle(req, res) {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/admin') {
+    await staticFile(res, resolve(rootDir, 'src', 'admin.html'));
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname.startsWith('/static/')) {
     await staticFile(res, resolve(rootDir, 'src', url.pathname.replace('/static/', '')));
     return;
@@ -965,6 +1168,59 @@ async function handle(req, res) {
 
   if (req.method === 'GET' && url.pathname === '/tools') {
     json(res, 200, { tools: toolNames });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/admin/api/endpoints') {
+    const includeData = url.searchParams.get('includeData') === 'true';
+    const entries = await Promise.all(
+      adminGetEndpoints.map((endpoint) => probeGetEndpoint(endpoint, includeData)),
+    );
+
+    json(res, 200, {
+      status: 'ok',
+      generatedAt: new Date().toISOString(),
+      count: entries.length,
+      entries,
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/audit/logs') {
+    const limit = Number(url.searchParams.get('limit') ?? 25);
+    const includeData = url.searchParams.get('includeData') === 'true';
+    const result = await readAuditEntries({ limit });
+    json(res, 200, {
+      status: 'ok',
+      count: result.count,
+      entries: includeData
+        ? result.entries
+        : result.entries.map((entry) => ({
+            file: entry.file,
+            timestamp: entry.timestamp,
+            action: entry.action,
+            applicationId: entry.applicationId,
+            applicationName: entry.applicationName,
+            hash: entry.hash,
+          })),
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/audit/logs/')) {
+    const file = decodeURIComponent(url.pathname.replace('/audit/logs/', ''));
+    if (!file || file.includes('/') || file.includes('\\') || !file.endsWith('.json')) {
+      json(res, 400, { status: 'error', message: 'Invalid audit log file name.' });
+      return;
+    }
+
+    const auditFile = resolve(rootDir, 'output', 'audit', file);
+    try {
+      const raw = await readFile(auditFile, 'utf-8');
+      json(res, 200, { status: 'ok', file, data: JSON.parse(raw) });
+    } catch {
+      json(res, 404, { status: 'error', message: 'Audit log not found.' });
+    }
     return;
   }
 
@@ -1236,8 +1492,25 @@ async function handle(req, res) {
     const prPayload = mainAgent.buildPullRequestPayload(remediationRequest, fixWithSbom.data ?? fix.data, cveData);
     const prResult = await mainAgent.executeTool('git_ops_tool', 'openPullRequest', prPayload, emit);
 
-    const prUrl = prResult.data?.html_url ?? prResult.data?.url ?? null;
-    const prNumber = prResult.data?.number ?? null;
+    const prData = prResult.data ?? {};
+    const prUrl =
+      prData.pullRequest?.url ??
+      prData.pr_url ??
+      prData.html_url ??
+      prData.url ??
+      null;
+
+    const prNumberCandidate =
+      prData.pullRequest?.number ??
+      prData.pr_number ??
+      prData.number ??
+      null;
+
+    const parsedPrNumber = Number.parseInt(String(prNumberCandidate ?? ''), 10);
+    const parsedPrFromUrl = Number.parseInt(String(prUrl ?? '').match(/\/(?:pull|pulls)\/(\d+)/)?.[1] ?? '', 10);
+    const prNumber = Number.isFinite(parsedPrNumber)
+      ? parsedPrNumber
+      : (Number.isFinite(parsedPrFromUrl) ? parsedPrFromUrl : null);
 
     emit({
       type: 'progress',

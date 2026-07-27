@@ -1,0 +1,20 @@
+AVRC Voiceover Script (60 seconds)
+
+Security teams do not have a tooling problem. They have an execution problem.
+
+Vulnerabilities pile up across code, containers, and cloud.
+Teams lose time in manual triage, duplicate CVEs, and disconnected workflows.
+
+AVRC is an autonomous vulnerability remediation core.
+It scans, deduplicates by canonical CVE, enriches with OSV and NVD context,
+and guides fixes with AI.
+
+In live validation, Semgrep scanning surfaced real findings,
+and Renovate dry run identified multiple dependency update paths,
+all routed through a GitOps ready flow.
+
+AVRC gives analysts faster triage, engineers clearer fixes,
+and security leaders measurable reduction in time to remediation.
+
+If you are scaling secure delivery across teams,
+book an AVRC demo and see your risk to remediation pipeline in action.

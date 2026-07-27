@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVRC Admin Endpoint Console</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+  </head>
+  <body>
+    <main class="admin-app">
+      <header class="topbar">
+        <div class="brand">
+          <p class="eyebrow">AVRC ADMIN</p>
+          <h1>GET Endpoint Console</h1>
+          <p class="subtitle">Live visibility for health, inventory, audit, model, and tool endpoints.</p>
+        </div>
+        <div class="top-actions">
+          <a class="ghost-btn" href="/">Back to Chat</a>
+          <button id="refresh-all" class="primary-btn" type="button">Refresh All</button>
+        </div>
+      </header>
+
+      <section class="stats" aria-label="endpoint summary">
+        <article class="stat-card">
+          <p>Total</p>
+          <strong id="stat-total">0</strong>
+        </article>
+        <article class="stat-card up">
+          <p>Healthy</p>
+          <strong id="stat-up">0</strong>
+        </article>
+        <article class="stat-card warn">
+          <p>Degraded</p>
+          <strong id="stat-warn">0</strong>
+        </article>
+        <article class="stat-card down">
+          <p>Failed</p>
+          <strong id="stat-down">0</strong>
+        </article>
+      </section>
+
+      <section class="toolbar">
+        <label>
+          Search
+          <input id="search" type="search" placeholder="health, audit, llm, semgrep..." />
+        </label>
+        <label>
+          Group
+          <select id="group-filter">
+            <option value="all">All groups</option>
+            <option value="core">Core App</option>
+            <option value="intel">Intelligence</option>
+            <option value="gitops">GitOps</option>
+            <option value="scanning">Scanning</option>
+            <option value="services">Platform Services</option>
+          </select>
+        </label>
+      </section>
+
+      <section id="endpoint-grid" class="endpoint-grid" aria-live="polite"></section>
+    </main>
+
+    <template id="endpoint-card-template">
+      <article class="endpoint-card">
+        <div class="card-head">
+          <span class="method">GET</span>
+          <span class="state pending">Pending</span>
+        </div>
+        <h2 class="name">Endpoint name</h2>
+        <p class="meta">Core App</p>
+        <a class="url" href="#" target="_blank" rel="noopener">URL</a>
+        <div class="chips">
+          <span class="chip latency">-- ms</span>
+          <span class="chip status-code">HTTP --</span>
+        </div>
+        <details>
+          <summary>Response preview</summary>
+          <pre>{}</pre>
+        </details>
+      </article>
+    </template>
+
+    <script type="module" src="/static/admin.js"></script>
+  </body>
+</html>

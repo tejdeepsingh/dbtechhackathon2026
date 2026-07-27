@@ -1,0 +1,10 @@
+{
+  "action": "hitl_remediation_approved",
+  "applicationId": "APP-00015",
+  "applicationName": "identity-service-0015",
+  "cveCount": 10,
+  "prNumber": null,
+  "prUrl": null,
+  "approvedAt": "2026-07-27T07:35:09.242Z",
+  "hash": "707bb04a22f603fe62e6af745b50e1090234e27be4f98877230ebdc98ac7b39e"
+}

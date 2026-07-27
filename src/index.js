@@ -17,6 +17,164 @@ const sessionId = sessionStorage.getItem('avrcSessionId') || crypto.randomUUID()
 
 sessionStorage.setItem('avrcSessionId', sessionId);
 
+const PIPELINE_STAGES = [
+  { key: 'intake', label: 'Intake', words: ['Reading prompt', 'Finding app context', 'Confirming scope'] },
+  { key: 'route', label: 'Routing', words: ['Selecting agent path', 'Loading tool chain', 'Preparing run'] },
+  { key: 'scan', label: 'Scanning', words: ['Running scanners', 'Collecting findings', 'Correlating results'] },
+  { key: 'dedupe', label: 'Deduping', words: ['Collapsing duplicates', 'Canonicalizing CVEs', 'Normalizing records'] },
+  { key: 'enrich', label: 'Enrichment', words: ['Pulling OSV/NVD context', 'Scoring risk detail', 'Adding remediation clues'] },
+  { key: 'remediate', label: 'Remediation', words: ['Choosing safe fixes', 'Preparing patch data', 'Drafting GitOps changes'] },
+  { key: 'verify', label: 'Verification', words: ['Validating fix strategy', 'Checking impacts', 'Assembling proof'] },
+  { key: 'report', label: 'Reporting', words: ['Building summary', 'Preparing final status', 'Publishing outcome'] },
+];
+
+function stageOrder(stageKey) {
+  return Math.max(0, PIPELINE_STAGES.findIndex((stage) => stage.key === stageKey));
+}
+
+function stageForEvent(event) {
+  const tool = (event.tool ?? '').toLowerCase();
+  const agent = (event.agent ?? '').toLowerCase();
+  const message = (event.message ?? '').toLowerCase();
+
+  if (agent.includes('chat_intake')) return 'intake';
+  if (event.type === 'route' || agent.includes('main_agent')) return 'route';
+  if (tool.includes('trivy') || tool.includes('semgrep') || tool.includes('renovate') || tool.includes('zap') || tool.includes('kubescape') || tool.includes('wazuh') || tool.includes('greenbone') || tool.includes('container')) return 'scan';
+  if (tool.includes('dedupe') || message.includes('deduplicat')) return 'dedupe';
+  if (tool.includes('osv') || tool.includes('nvd') || tool.includes('cve_lookup') || message.includes('enrich')) return 'enrich';
+  if (tool.includes('remediation') || tool.includes('fix')) return 'remediate';
+  if (tool.includes('verification') || message.includes('verif')) return 'verify';
+  if (tool.includes('notification') || tool.includes('audit') || message.includes('summary') || message.includes('report')) return 'report';
+  return 'scan';
+}
+
+function statusWordForEvent(event, stageKey) {
+  const status = event.status ?? 'running';
+  if (status === 'success') return 'Completed';
+  if (status === 'error') return 'Failed';
+  if (status === 'blocked') return 'Blocked';
+  if (status === 'needs_approval') return 'Waiting approval';
+  if (status === 'needs_info') return 'Need more context';
+
+  const stage = PIPELINE_STAGES.find((item) => item.key === stageKey);
+  if (!stage) return 'Processing';
+  const indexSeed = Math.max(0, (event.message ?? '').length + (event.tool ?? '').length + (event.agent ?? '').length);
+  return stage.words[indexSeed % stage.words.length];
+}
+
+function renderPipelineRail() {
+  return `
+    <section class="run-pipeline" aria-label="Pipeline status animation">
+      <div class="pipeline-head">
+        <strong>Live pipeline</strong>
+        <span class="pipeline-word" data-role="status-word">Booting workflow</span>
+      </div>
+      <ol class="pipeline-track">
+        ${PIPELINE_STAGES.map((stage, index) => `
+          <li class="stage-item ${index === 0 ? 'running' : 'pending'}" data-stage="${stage.key}">
+            <span class="stage-node"></span>
+            <div>
+              <p class="stage-label">${escapeHtml(stage.label)}</p>
+              <p class="stage-state">${index === 0 ? 'Running' : 'Queued'}</p>
+            </div>
+          </li>
+        `).join('')}
+      </ol>
+    </section>
+  `;
+}
+
+function updatePipelineRail(container, event) {
+  const stageKey = stageForEvent(event);
+  const activeIndex = stageOrder(stageKey);
+  const status = event.status ?? 'running';
+
+  container.querySelectorAll('.stage-item').forEach((item, index) => {
+    const stateNode = item.querySelector('.stage-state');
+    item.classList.remove('pending', 'running', 'done', 'warning', 'failed');
+
+    if (status === 'error' && index === activeIndex) {
+      item.classList.add('failed');
+      if (stateNode) stateNode.textContent = 'Error';
+      return;
+    }
+
+    if (status === 'blocked' && index === activeIndex) {
+      item.classList.add('warning');
+      if (stateNode) stateNode.textContent = 'Blocked';
+      return;
+    }
+
+    if (status === 'needs_info' && index === activeIndex) {
+      item.classList.add('warning');
+      if (stateNode) stateNode.textContent = 'Need info';
+      return;
+    }
+
+    if (status === 'needs_approval' && index === activeIndex) {
+      item.classList.add('warning');
+      if (stateNode) stateNode.textContent = 'Awaiting approval';
+      return;
+    }
+
+    if (index < activeIndex || (status === 'success' && index === activeIndex)) {
+      item.classList.add('done');
+      if (stateNode) stateNode.textContent = 'Done';
+    } else if (index === activeIndex) {
+      item.classList.add('running');
+      if (stateNode) stateNode.textContent = status === 'success' ? 'Done' : 'Running';
+    } else {
+      item.classList.add('pending');
+      if (stateNode) stateNode.textContent = 'Queued';
+    }
+  });
+
+  const word = container.querySelector('[data-role="status-word"]');
+  if (word) word.textContent = statusWordForEvent(event, stageKey);
+}
+
+function renderStagePlaybackFromResult(payload) {
+  const finalStatus = payload.status ?? 'success';
+  let highestStageIndex = 0;
+
+  for (const step of (payload.steps ?? [])) {
+    const key = stageForEvent(step);
+    highestStageIndex = Math.max(highestStageIndex, stageOrder(key));
+  }
+
+  const items = PIPELINE_STAGES.map((stage, index) => {
+    let cls = 'pending';
+    let text = 'Queued';
+    if (index < highestStageIndex || (finalStatus === 'success' && index === highestStageIndex)) {
+      cls = 'done';
+      text = 'Done';
+    } else if (index === highestStageIndex && finalStatus !== 'success') {
+      cls = finalStatus === 'error' ? 'failed' : 'warning';
+      text = finalStatus === 'error' ? 'Error' : 'Paused';
+    }
+
+    return `
+      <li class="stage-item ${cls}">
+        <span class="stage-node"></span>
+        <div>
+          <p class="stage-label">${escapeHtml(stage.label)}</p>
+          <p class="stage-state">${escapeHtml(text)}</p>
+        </div>
+      </li>
+    `;
+  }).join('');
+
+  return `
+    <section class="run-pipeline compact" aria-label="Pipeline completion summary">
+      <div class="pipeline-head">
+        <strong>Run status</strong>
+        <span class="pipeline-word">${escapeHtml(friendlyStatusLabel(finalStatus))}</span>
+      </div>
+      <ol class="pipeline-track">${items}</ol>
+    </section>
+  `;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -337,6 +495,7 @@ function renderResult(payload) {
       <div class="status ${escapeHtml(payload.status)}">
         <strong>${escapeHtml(friendlyStatusLabel(payload.status))}</strong>
       </div>
+      ${renderStagePlaybackFromResult(payload)}
       <p>${escapeHtml(summarizeResult(payload))}</p>
       ${renderTechnicalDetails(payload)}
     </div>
@@ -350,12 +509,15 @@ function renderProgressShell() {
         <strong>running</strong>
         <span>Working on your request...</span>
       </div>
+      ${renderPipelineRail()}
       <ol class="progress-feed"></ol>
     </div>
   `;
 }
 
 function appendProgress(container, event) {
+  updatePipelineRail(container, event);
+
   const feed = container.querySelector('.progress-feed');
   if (!feed) return;
 
@@ -684,7 +846,13 @@ hitlApprove.addEventListener('click', async () => {
 function renderRemediationResult(payload) {
   const pr = payload.pr ?? {};
   const fix = payload.fix ?? {};
-  const prLink = pr.url ? `<a href="${escapeHtml(pr.url)}" target="_blank" rel="noopener">PR #${pr.number ?? '?'}</a>` : 'PR prepared';
+  const prUrl = pr.url ?? pr.pullRequest?.url ?? pr.pr_url ?? null;
+  const parsedNumber = Number.parseInt(String(pr.number ?? pr.pullRequest?.number ?? pr.pr_number ?? ''), 10);
+  const parsedFromUrl = Number.parseInt(String(prUrl ?? '').match(/\/(?:pull|pulls)\/(\d+)/)?.[1] ?? '', 10);
+  const prNumber = Number.isFinite(parsedNumber)
+    ? parsedNumber
+    : (Number.isFinite(parsedFromUrl) ? parsedFromUrl : '?');
+  const prLink = prUrl ? `<a href="${escapeHtml(prUrl)}" target="_blank" rel="noopener">PR #${prNumber}</a>` : 'PR prepared';
 
   return `
     <div class="agent-result">
@@ -721,6 +889,12 @@ function updateDashboardAfterRemediation(payload) {
   if (!hitlPanel) return;
 
   const pr = payload.pr ?? {};
+  const prUrl = pr.url ?? pr.pullRequest?.url ?? pr.pr_url ?? null;
+  const parsedNumber = Number.parseInt(String(pr.number ?? pr.pullRequest?.number ?? pr.pr_number ?? ''), 10);
+  const parsedFromUrl = Number.parseInt(String(prUrl ?? '').match(/\/(?:pull|pulls)\/(\d+)/)?.[1] ?? '', 10);
+  const prNumber = Number.isFinite(parsedNumber)
+    ? parsedNumber
+    : (Number.isFinite(parsedFromUrl) ? parsedFromUrl : '?');
   const status = payload.status === 'success' ? 'approved' : 'failed';
 
   hitlPanel.style.borderColor = status === 'approved' ? '#16a34a' : '#dc2626';
@@ -735,7 +909,7 @@ function updateDashboardAfterRemediation(payload) {
       <div>
         <strong>${status === 'approved' ? 'Remediation Approved & Executed' : 'Remediation Failed'}</strong>
         <p>${escapeHtml(payload.message ?? '')}</p>
-        ${pr.url ? `<p><a href="${escapeHtml(pr.url)}" target="_blank" rel="noopener">View Pull Request #${pr.number ?? '?'} on Forgejo →</a></p>` : ''}
+        ${prUrl ? `<p><a href="${escapeHtml(prUrl)}" target="_blank" rel="noopener">View Pull Request #${prNumber} on Forgejo →</a></p>` : ''}
       </div>
     `;
   }
