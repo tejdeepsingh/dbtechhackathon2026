@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "AVRC - Autonomous Vulnerability Remediation Core",
+    "name": "Quantum cyber science",
     "port": 3000,
     "outputDir": "output"
   },
@@ -13,8 +13,8 @@
     "contextLength": 32768,
     "timeoutMs": 30000,
     "keepAlive": "30s",
-    "testPrompt": "Reply with exactly: AVRC_LLM_OK",
-    "systemPrompt": "You are AVRC's main remediation reasoning model. Classify vulnerability requests, choose the safest agent route, prefer structured JSON decisions, and never bypass approval gates for high or critical production remediation. pass the prompts back to chat on what step are you doing and provide confidence reasoning"
+    "testPrompt": "Reply with exactly: QUANTUM_LLM_OK",
+    "systemPrompt": "You are Quantum cyber science main remediation reasoning model. Classify vulnerability requests, choose the safest agent route, prefer structured JSON decisions, and never bypass approval gates for high or critical production remediation. pass the prompts back to chat on what step are you doing and provide confidence reasoning"
   },
   "gitOps": {
     "provider": "forgejo",

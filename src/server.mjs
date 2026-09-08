@@ -3,12 +3,16 @@ import { createServer } from 'node:http';
 import { dirname, extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createAuth, canAccess } from './auth.mjs';
 import { MainAgent } from './agents/main_agent.mjs';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(resolve(rootDir, 'config', 'config.json'), 'utf-8'));
+if (process.env.PORT) config.app.port = Number(process.env.PORT);
 const mainAgent = new MainAgent({ config, rootDir });
 const sessions = new Map();
+const demoUsers = JSON.parse(await readFile(process.env.QCS_DEMO_USERS_FILE || resolve(rootDir, 'config', 'demo-users.json'), 'utf-8'));
+const auth = createAuth(demoUsers, { secure: Boolean(process.env.K_SERVICE) });
 
 // ---------------------------------------------------------------------------
 // Application Inventory
@@ -93,7 +97,7 @@ async function loadInventory() {
 
     return { rows: [], source: null };
   } catch {
-    console.warn('[inventory] Could not load inventory CSV — inventory lookup disabled.');
+    console.warn('[inventory] Could not load inventory CSV â€” inventory lookup disabled.');
     return { rows: [], source: null };
   }
 }
@@ -208,7 +212,7 @@ function inventoryContextPatch(app) {
     scopes.add('on_prem');
   }
 
-  // Docker-compose (VM or on-prem) — image scope too
+  // Docker-compose (VM or on-prem) â€” image scope too
   if (dt.startsWith('docker-compose')) scopes.add('image');
 
   // Live runtime URL exists (skip static / batch / mainframe)
@@ -221,7 +225,7 @@ function inventoryContextPatch(app) {
     scopes.add('runtime');
   }
 
-  // Only infer runtime scope if we actually have a concrete URL — otherwise the user
+  // Only infer runtime scope if we actually have a concrete URL â€” otherwise the user
   // would be asked to provide one, which is confusing when it's not known in inventory.
 
   // Concrete targets
@@ -270,44 +274,44 @@ function sse(res, event, payload) {
 
 const adminGetEndpoints = [
   {
-    name: 'AVRC Health',
+    name: 'Platform health',
     group: 'core',
     groupLabel: 'Core App',
     path: '/health',
-    publicUrl: 'http://localhost:3000/health',
-    probeUrls: ['http://127.0.0.1:3000/health'],
+    publicUrl: '/health',
+    probeUrls: [`http://127.0.0.1:${config.app.port}/health`],
   },
   {
-    name: 'AVRC Agents',
+    name: 'Specialist agents',
     group: 'core',
     groupLabel: 'Core App',
     path: '/agents',
-    publicUrl: 'http://localhost:3000/agents',
-    probeUrls: ['http://127.0.0.1:3000/agents'],
+    publicUrl: '/agents',
+    probeUrls: [`http://127.0.0.1:${config.app.port}/agents`],
   },
   {
-    name: 'AVRC Tools',
+    name: 'Security tools',
     group: 'core',
     groupLabel: 'Core App',
     path: '/tools',
-    publicUrl: 'http://localhost:3000/tools',
-    probeUrls: ['http://127.0.0.1:3000/tools'],
+    publicUrl: '/tools',
+    probeUrls: [`http://127.0.0.1:${config.app.port}/tools`],
   },
   {
     name: 'Audit Logs',
     group: 'core',
     groupLabel: 'Core App',
     path: '/audit/logs?limit=25',
-    publicUrl: 'http://localhost:3000/audit/logs?limit=25',
-    probeUrls: ['http://127.0.0.1:3000/audit/logs?limit=25'],
+    publicUrl: '/audit/logs?limit=25',
+    probeUrls: [`http://127.0.0.1:${config.app.port}/audit/logs?limit=25`],
   },
   {
     name: 'LLM Models',
     group: 'intel',
     groupLabel: 'Intelligence',
     path: '/llm/models',
-    publicUrl: 'http://localhost:3000/llm/models',
-    probeUrls: ['http://127.0.0.1:3000/llm/models'],
+    publicUrl: '/llm/models',
+    probeUrls: [`http://127.0.0.1:${config.app.port}/llm/models`],
   },
   {
     name: 'Forgejo UI',
@@ -359,7 +363,28 @@ const adminGetEndpoints = [
   },
 ];
 
-async function probeGetEndpoint(endpoint, includeData = false) {
+function toolBaseUrlOverride(tool) {
+  const key = `TOOL_BASEURL_${tool.name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+  return process.env[key];
+}
+
+function deployedAdminEndpoints() {
+  return adminGetEndpoints.flatMap((endpoint) => {
+    if (endpoint.name === 'Forgejo UI') {
+      const base = process.env.FORGEJO_BASE_URL;
+      if (base) return [{ ...endpoint, publicUrl: base, probeUrls: [base] }];
+      if (process.env.K_SERVICE) return [];
+    }
+    const tool = config.tools.find((candidate) => candidate.baseUrl &&
+      endpoint.probeUrls.some((url) => new URL(url).hostname === new URL(candidate.baseUrl).hostname));
+    const override = tool && toolBaseUrlOverride(tool);
+    if (!override) return [endpoint];
+    const publicUrl = `${override.replace(/\/$/, '')}${endpoint.path}`;
+    return [{ ...endpoint, publicUrl, probeUrls: [publicUrl] }];
+  });
+}
+
+async function probeGetEndpoint(endpoint, includeData = false, sessionCookie = null) {
   const probeUrls = Array.isArray(endpoint.probeUrls) && endpoint.probeUrls.length
     ? endpoint.probeUrls
     : [endpoint.publicUrl];
@@ -374,7 +399,7 @@ async function probeGetEndpoint(endpoint, includeData = false) {
     try {
       const response = await fetch(probeUrl, {
         method: 'GET',
-        headers: { accept: 'application/json, text/plain, */*' },
+        headers: { accept: 'application/json, text/plain, */*', ...(endpoint.publicUrl.startsWith('/') && sessionCookie ? { cookie: sessionCookie } : {}) },
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -466,10 +491,11 @@ async function readAuditEntries({ limit = 25 } = {}) {
   };
 }
 
-function getSession(sessionId) {
+function getSession(sessionId, username) {
   const id = sessionId || randomUUID();
-  if (!sessions.has(id)) {
-    sessions.set(id, {
+  const storageKey = `${username}:${id}`;
+  if (!sessions.has(storageKey)) {
+    sessions.set(storageKey, {
       id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -494,7 +520,7 @@ function getSession(sessionId) {
     });
   }
 
-  return sessions.get(id);
+  return sessions.get(storageKey);
 }
 
 function extractContextFromText(text) {
@@ -623,7 +649,7 @@ async function interpretUserContextWithLlm(session, request) {
     content: message.content,
   }));
 
-  // Build inventory hint — either the already-matched app or top candidates by name
+  // Build inventory hint â€” either the already-matched app or top candidates by name
   const appHint = session.context.inventoryApp ?? null;
   const candidateApps = appHint
     ? null
@@ -647,7 +673,7 @@ async function interpretUserContextWithLlm(session, request) {
       })();
 
   const systemContent = [
-    'You are Advanced Vanguard for Rapid Containment (AVRC) chat intake. Interpret the latest user reply against the full session context.',
+    'You are Quantum cyber science chat intake. Interpret the latest user reply against the full session context.',
     'Return only strict JSON. Do not ask a question here.',
     'Application identity must be deterministic: prefer APP-ID in the form APP-####.',
     'Extract fields when present or clearly implied. Preserve unknown fields as null or empty arrays.',
@@ -867,7 +893,7 @@ function fallbackClarification(session, missing) {
   if (missing.includes('applicationId')) {
     return 'Which application would you like me to scan? Please provide an APP-ID (e.g. APP-00042) or an application name. I\'ll automatically pull the repo, image, runtime, and deployment details from inventory.';
   }
-  if (missing.includes('scanScopes')) return 'I found the application but couldn\'t determine what to scan. The inventory entry may be incomplete. Could you tell me what you\'d like scanned — repository code, container image, runtime endpoint, or deployed workload?';
+  if (missing.includes('scanScopes')) return 'I found the application but couldn\'t determine what to scan. The inventory entry may be incomplete. Could you tell me what you\'d like scanned â€” repository code, container image, runtime endpoint, or deployed workload?';
   return 'I have most of the details. Could you clarify the remaining scan target?';
 }
 
@@ -1007,7 +1033,7 @@ async function unloadOllamaModel(model) {
 
 async function testOllamaModel({ model, prompt, timeoutMs, unloadAfter } = {}) {
   const started = Date.now();
-  const testPrompt = prompt || config.llm?.testPrompt || 'Reply with exactly: AVRC_LLM_OK';
+  const testPrompt = prompt || config.llm?.testPrompt || 'Reply with exactly: QUANTUM_LLM_OK';
   const content = await callOllama(
     [
       {
@@ -1056,14 +1082,14 @@ async function buildClarification(session, missing, model) {
       ? `The application "${invApp.app_name}" (${invApp.app_id}) was matched in the inventory: ` +
         `deployment_type=${invApp.deployment_type}, runtime=${invApp.runtime}, cloud=${invApp.cloud_provider}, ` +
         `pipeline=${invApp.pipeline}, criticality=${invApp.criticality}, data_classification=${invApp.data_classification}. ` +
-        `Use this context when asking about missing fields — for example, mention known deployment specifics.`
+        `Use this context when asking about missing fields â€” for example, mention known deployment specifics.`
       : `No inventory match yet. If applicationName is missing, offer to list known applications or ask the user to name one.`;
 
     const question = await callOllama([
       {
         role: 'system',
         content:
-          'You are AVRC (Advanced Vanguard for Rapid Containment) intake. Ask one concise question to collect only the missing scan context. Use the known context and do not repeat already collected information. Valid scan scopes: repo, image, deployed workload, runtime endpoint, on-prem hosts, all hybrid targets. Do not start scanning. ' +
+          'You are Quantum cyber science intake. Ask one concise question to collect only the missing scan context. Use the known context and do not repeat already collected information. Valid scan scopes: repo, image, deployed workload, runtime endpoint, on-prem hosts, all hybrid targets. Do not start scanning. ' +
           inventoryNote,
       },
       {
@@ -1123,7 +1149,10 @@ function enrichRequestFromContext(request, session) {
 
 async function body(req) {
   const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 1024 * 1024) throw Object.assign(new Error('Request body too large'), { statusCode: 413 });
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   const raw = Buffer.concat(chunks).toString('utf-8');
@@ -1140,6 +1169,53 @@ async function staticFile(res, filePath) {
 
 async function handle(req, res) {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Cache-Control', 'no-store');
+  const publicAssets = new Set(['styles.css', 'admin.css', 'corporate.css', 'index.js', 'admin.js', 'session.js', 'login.js']);
+  if (req.method === 'GET' && url.pathname.startsWith('/static/')) {
+    const asset = url.pathname.slice('/static/'.length);
+    if (!publicAssets.has(asset)) return json(res, 404, { message: 'Not found' });
+    await staticFile(res, resolve(rootDir, 'src', asset));
+    return;
+  }
+  if (req.method === 'GET' && url.pathname === '/login') {
+    await staticFile(res, resolve(rootDir, 'src', 'login.html'));
+    return;
+  }
+  if (req.method === 'GET' && url.pathname === '/health') {
+    return json(res, 200, { status: 'ok', app: config.app.name });
+  }
+  if (req.method === 'POST') {
+    if (!req.headers['content-type']?.startsWith('application/json') || req.headers['x-qcs-request'] !== '1') {
+      return json(res, 403, { message: 'A same-site JSON request is required.' });
+    }
+    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) {
+      return json(res, 403, { message: 'Cross-site requests are not allowed.' });
+    }
+  }
+  if (req.method === 'POST' && url.pathname === '/auth/login') {
+    const request = await body(req);
+    const result = await auth.login(request.username, request.password, req.socket.remoteAddress);
+    if (!result || result.limited) return json(res, result?.limited ? 429 : 401, { message: result?.limited ? 'Too many attempts. Try again in one minute.' : 'Incorrect username or password.' });
+    res.setHeader('Set-Cookie', result.cookie);
+    return json(res, 200, { user: result.user });
+  }
+  const user = auth.current(req);
+  if (!user) {
+    if (req.method === 'GET' && ['/', '/admin'].includes(url.pathname)) {
+      res.writeHead(303, { location: '/login' }); res.end(); return;
+    }
+    return json(res, 401, { message: 'Sign in to continue.' });
+  }
+  if (!canAccess(user.role, req.method, url.pathname)) return json(res, 403, { message: 'Your role does not permit this action.' });
+  if (req.method === 'GET' && url.pathname === '/auth/me') return json(res, 200, { user });
+  if (req.method === 'POST' && url.pathname === '/auth/logout') {
+    res.setHeader('Set-Cookie', auth.logout(req));
+    return json(res, 200, { status: 'ok' });
+  }
+
 
   if (req.method === 'GET' && url.pathname === '/') {
     await staticFile(res, resolve(rootDir, 'src', 'index.html'));
@@ -1172,9 +1248,46 @@ async function handle(req, res) {
   }
 
   if (req.method === 'GET' && url.pathname === '/admin/api/endpoints') {
+    // The directory is available immediately, without waiting for service probes.
+    if (url.searchParams.get('catalog') === 'true') {
+      const routes = [
+        ['Sign in', 'GET', '/login', 'Account'],
+        ['Sign in session', 'POST', '/auth/login', 'Account'],
+        ['Current account', 'GET', '/auth/me', 'Account'],
+        ['Sign out', 'POST', '/auth/logout', 'Account'],
+        ['Workspace', 'GET', '/', 'Workspace'],
+        ['Endpoint directory', 'GET', '/admin', 'Workspace'],
+        ['Platform health', 'GET', '/health', 'Platform'],
+        ['Specialist agents', 'GET', '/agents', 'Platform'],
+        ['Security tools', 'GET', '/tools', 'Platform'],
+        ['Endpoint health data', 'GET', '/admin/api/endpoints', 'Platform'],
+        ['Endpoint catalog', 'GET', '/admin/api/endpoints?catalog=true', 'Platform'],
+        ['Audit history', 'GET', '/audit/logs', 'Audit'],
+        ['Audit record', 'GET', '/audit/logs/{file}', 'Audit'],
+        ['Available models', 'GET', '/llm/models', 'Model controls'],
+        ['Test model', 'POST', '/llm/test', 'Model controls'],
+        ['Unload model', 'POST', '/llm/unload', 'Model controls'],
+        ['Conversation', 'POST', '/chat', 'Investigations'],
+        ['Live investigation', 'POST', '/chat/stream', 'Investigations'],
+        ['Approve remediation', 'POST', '/chat/remediate', 'Investigations'],
+        ['UI assets', 'GET', '/static/{file}', 'Platform'],
+      ].map(([name, method, path, group]) => ({ name, method, path, group, url: path }));
+      const services = deployedAdminEndpoints().filter((entry) => entry.group !== 'core' && entry.path !== '/llm/models')
+        .map((entry) => ({ name: entry.name, method: 'GET', path: entry.path, group: 'Service connections', url: entry.publicUrl }));
+      const toolRoutes = config.tools.flatMap((tool) => Object.entries(tool.endpoints ?? {}).map(([action, path]) => ({
+        name: action.replace(/([a-z])([A-Z])/g, '$1 $2'),
+        method: action === 'health' ? 'GET' : 'POST',
+        path,
+        group: tool.name.replaceAll('_', ' '),
+        url: `${(toolBaseUrlOverride(tool) || tool.localFallbackUrl || tool.baseUrl).replace(/\/$/, '')}${path}`,
+        internal: !toolBaseUrlOverride(tool) && !tool.localFallbackUrl,
+      })));
+      json(res, 200, { status: 'ok', entries: [...routes, ...services, ...toolRoutes] });
+      return;
+    }
     const includeData = url.searchParams.get('includeData') === 'true';
     const entries = await Promise.all(
-      adminGetEndpoints.map((endpoint) => probeGetEndpoint(endpoint, includeData)),
+      deployedAdminEndpoints().map((endpoint) => probeGetEndpoint(endpoint, includeData, req.headers.cookie)),
     );
 
     json(res, 200, {
@@ -1242,11 +1355,13 @@ async function handle(req, res) {
 
   if (req.method === 'POST' && url.pathname === '/chat') {
     const request = await body(req);
+    request.readOnly = !user.approve;
+    request.approved = user.approve && request.approved === true;
     if (!request.prompt) {
       json(res, 400, { status: 'error', message: 'prompt is required' });
       return;
     }
-    const session = getSession(request.sessionId);
+    const session = getSession(request.sessionId, user.username);
     session.messages.push({ role: 'user', content: request.prompt, timestamp: new Date().toISOString() });
     await mergeSessionContext(session, request);
 
@@ -1277,6 +1392,8 @@ async function handle(req, res) {
 
   if (req.method === 'POST' && url.pathname === '/chat/stream') {
     const request = await body(req);
+    request.readOnly = !user.approve;
+    request.approved = user.approve && request.approved === true;
     if (!request.prompt) {
       json(res, 400, { status: 'error', message: 'prompt is required' });
       return;
@@ -1293,11 +1410,11 @@ async function handle(req, res) {
       type: 'progress',
       agent: 'server',
       status: 'accepted',
-      message: 'Streaming AVRC agent progress (Advanced Vanguard for Rapid Containment).',
+      message: 'Streaming Quantum cyber science agent progress.',
       timestamp: new Date().toISOString(),
     });
 
-    const session = getSession(request.sessionId);
+    const session = getSession(request.sessionId, user.username);
     session.messages.push({ role: 'user', content: request.prompt, timestamp: new Date().toISOString() });
     await mergeSessionContext(session, request);
 
@@ -1351,7 +1468,7 @@ async function handle(req, res) {
       type: 'progress',
       agent: 'chat_intake_agent',
       status: 'success',
-      message: `Context ready for ${session.context.applicationName}; starting AVRC scan for ${scopePrompt(session.context.scanScopes)}.`,
+      message: `Context ready for ${session.context.applicationName}; starting Quantum cyber science scan for ${scopePrompt(session.context.scanScopes)}.`,
       timestamp: new Date().toISOString(),
       details: { sessionId: session.id, context: session.context },
     });
@@ -1370,7 +1487,7 @@ async function handle(req, res) {
   if (req.method === 'POST' && url.pathname === '/chat/remediate') {
     const request = await body(req);
     const sessionId = request.sessionId ?? randomUUID();
-    const session = getSession(sessionId);
+    const session = getSession(sessionId, user.username);
 
     res.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
@@ -1564,7 +1681,7 @@ async function handle(req, res) {
 
 createServer((req, res) => {
   handle(req, res).catch((error) => {
-    json(res, 500, {
+    json(res, error.statusCode || (error instanceof SyntaxError ? 400 : 500), {
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown server error',
     });

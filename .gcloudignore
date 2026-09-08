@@ -1,0 +1,12 @@
+# Upload only the application container sources.
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!src/
+!src/**
+!config/
+!config/config.json
+!config/demo-users.json
+!data/
+!data/**

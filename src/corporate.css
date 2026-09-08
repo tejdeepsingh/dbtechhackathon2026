@@ -1,0 +1,71 @@
+﻿:root { --ok:#2b7552; --warn:#936500; --bad:#b8333b; }
+.site-header { background:#142b49; color:#fff; height:88px; gap:36px; padding-inline:4%; }
+.brand-symbol { display:grid;place-items:center;background:#fff;color:#214a7b;border-radius:6px;width:39px;height:39px;font-size:28px;font-weight:650; }
+.brand-lockup { font-size:20px;letter-spacing:-.4px; }
+.brand-sub { font-size:10px;letter-spacing:1.3px; }
+.site-header nav a { color:#dbe5f2; }
+.site-header .workspace-link,.directory-page .site-header .directory-link { background:#294565;color:#fff; }
+.directory-page .site-header .workspace-link { color:#dbe5f2; }
+.account-menu { margin-left:auto;display:flex;align-items:center;gap:16px; }
+.account-menu strong,.account-menu small { display:block; }
+.account-menu strong { font-size:12px;font-weight:500; }
+.account-menu small { color:#b7c9df;font-size:10px;margin-top:3px; }
+.account-menu button { color:#fff;background:transparent;border:1px solid #58708e;font-size:11px;padding:7px 12px; }
+.workspace-top h1 { font-size:27px;font-weight:600; }
+.eyebrow { font:600 10px/1.5 'Segoe UI',sans-serif;letter-spacing:1.2px; }
+.app,.admin-app { padding-top:30px; }
+.workspace-grid { gap:28px;grid-template-columns:minmax(0,1fr) 275px; }
+.chat-shell { border-radius:8px;box-shadow:0 3px 14px #23375308; }
+.chat-header { background:#fafbfd; }
+.chat-header strong { font-weight:600; }
+.signal-dot { background:#2b7552; }
+.dashboard-banner { padding-top:32px; }
+.dashboard-banner h2 { font-size:34px;letter-spacing:-.8px;line-height:1.25;font-weight:550; }
+.dashboard-banner h2 span { color:#566d88;font-size:27px;font-weight:400; }
+.examples button { background:#f8fafc;font-size:12px;border-radius:5px; }
+.composer { box-shadow:0 2px 5px #20395806; }
+.chat-footnote { color:#68788d;letter-spacing:.6px; }
+.mission-panel { padding:22px;background:#fff;border:1px solid var(--line);border-radius:8px;align-self:start; }
+.mission-panel h2 { font-size:22px; }
+.program-badge { display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:24px; }
+.program-icon { width:40px;height:40px;display:grid;place-items:center;background:#e9f0fa;color:#255a9e;border-radius:6px;font-size:25px;font-weight:600; }
+.program-badge strong { font-size:13px;font-weight:600; }
+.program-badge p { font-size:10px;margin:3px 0 0; }
+.directory-cta { padding:16px; }
+.directory-cta strong { font-size:17px; }
+.mission-steps { margin-bottom:24px; }
+.mission-steps strong { font-weight:600; }
+.topbar h1 { font-size:32px;letter-spacing:-.7px;font-weight:600; }
+.endpoint-route:hover { background:#edf3fb; }
+.method { color:#24613f; }
+.status strong { color:#24613f;background:#e8f2eb; }
+.access-note { display:none;padding:12px 16px;border:1px solid #cbd9ea;background:#eaf1fa;border-radius:5px;font-size:12px;margin-bottom:22px; }
+body[data-role=analyst] .analyst-note,body[data-role=auditor] .auditor-note { display:block; }
+body[data-role=analyst] #hitl-approve,body[data-role=analyst] #hitl-reject,body[data-role=auditor] .hitl-actions,body[data-role=auditor] #chat-form,body[data-role=auditor] .examples,body[data-role=auditor] .settings-drawer { display:none; }
+body[data-role=analyst] label:has(#approved),body[data-role=analyst] #test-llm,body[data-role=analyst] #unload-llm,body[data-role=analyst] label:has(#llm-unload-after-test) { display:none; }
+.login-page { min-height:100vh;display:grid;place-items:center;padding:40px 24px;background:#edf1f6; }
+.login-layout { width:min(1060px,100%);display:grid;grid-template-columns:.95fr 1fr;border-radius:10px;overflow:hidden;box-shadow:0 18px 60px #192f4b16;background:#fff; }
+.login-intro { background:#142b49;color:#fff;padding:45px;display:flex;flex-direction:column;justify-content:space-between;gap:70px; }
+.login-intro .eyebrow { color:#a8c5e7;font-size:9px; }
+.login-intro h1 { font-size:44px;line-height:1.18;letter-spacing:-1px;margin:20px 0; }
+.login-intro p { color:#c4d1e2;font-size:13px;line-height:1.9; }
+.login-assurance { display:grid;gap:12px;font-size:11px;color:#c4d1e2;border-top:1px solid #3d526e;padding-top:22px; }
+.login-content { padding:48px; }
+.demo-tag { color:#255a9e;background:#edf3fb;padding:5px 8px;font-size:9px;letter-spacing:1px;font-weight:650;border-radius:3px; }
+.login-content h2 { font-size:29px;font-weight:600;letter-spacing:-.5px;margin:24px 0 7px; }
+.login-content>p { font-size:12px; }
+#login-form { display:grid;gap:18px;margin-top:28px; }
+#login-form label { color:#33465f;font-size:12px;font-weight:500; }
+#login-form input:not([type=checkbox]) { height:44px;background:#fff;padding:10px 12px; }
+#login-form .check { font-size:11px; }
+#login-form .primary-btn { min-height:43px;font-size:13px; }
+.login-error { font-size:12px;color:#b8333b;margin:0; }
+.login-error:empty { display:none; }
+.role-guide { border-top:1px solid var(--line);margin-top:30px;padding-top:20px; }
+.role-guide h3 { font-size:11px;font-weight:600;margin-bottom:15px; }
+.role-guide p { margin:12px 0;font-size:11px; }
+.role-guide strong { display:block;color:#33465f;font-weight:600; }
+.role-guide span { display:block;font-size:10px;margin-top:3px; }
+.login-footer { font-size:9px!important;margin:25px 0 0;color:#7b8899; }
+@media(max-width:1000px) { .site-header { gap:15px; }.site-header nav a { padding:9px 10px; }.workspace-grid { grid-template-columns:minmax(0,1fr) 240px;gap:20px; }.login-intro,.login-content { padding:32px; } }
+@media(max-width:760px) { .site-header { height:auto;flex-wrap:wrap;padding:18px; }.account-menu { gap:10px; }.site-header nav { order:3;width:100%; }.workspace-grid { grid-template-columns:1fr; }.dashboard-banner h2 { font-size:27px; }.dashboard-banner h2 span { font-size:23px; }.login-layout { grid-template-columns:1fr;max-width:480px; }.login-intro { padding:26px;gap:20px; }.login-intro>div,.login-assurance { display:none; }.login-page { padding:20px 12px; }.login-content { padding:28px; }.topbar h1 { font-size:27px; } }

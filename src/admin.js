@@ -1,3 +1,5 @@
+import { initializeSession } from './session.js';
+const currentUser = await initializeSession();
 const grid = document.querySelector('#endpoint-grid');
 const searchInput = document.querySelector('#search');
 const groupFilter = document.querySelector('#group-filter');
@@ -97,6 +99,7 @@ function applyFilters() {
 
 async function loadEndpoints() {
   refreshButton.disabled = true;
+  if (!allEntries.length) grid.textContent = 'Checking service connections...';
   refreshButton.textContent = 'Refreshing...';
 
   try {
@@ -109,7 +112,10 @@ async function loadEndpoints() {
     allEntries = payload.entries || [];
     applyFilters();
   } catch (error) {
-    grid.innerHTML = `<article class="empty">Failed to load endpoint data: ${error.message}</article>`;
+    const notice = document.createElement('article');
+    notice.className = 'empty';
+    notice.textContent = `Failed to load endpoint data: ${error.message}`;
+    grid.replaceChildren(notice);
     statTotal.textContent = '0';
     statUp.textContent = '0';
     statWarn.textContent = '0';
@@ -125,3 +131,104 @@ groupFilter.addEventListener('change', applyFilters);
 refreshButton.addEventListener('click', loadEndpoints);
 
 loadEndpoints();
+
+// Browsing the catalog never invokes a POST action.
+const endpointMenu = document.querySelector('#endpoint-menu');
+const catalogSearch = document.querySelector('#catalog-search');
+const catalogCount = document.querySelector('#catalog-count');
+let catalog = [];
+
+function renderCatalog() {
+  const query = catalogSearch.value.trim().toLowerCase();
+  const entries = catalog.filter((entry) => [entry.name, entry.group, entry.path, entry.method, entry.url].join(' ').toLowerCase().includes(query));
+  catalogCount.textContent = `${entries.length} / ${catalog.length} endpoints`;
+  endpointMenu.replaceChildren();
+  const groups = Map.groupBy ? Map.groupBy(entries, (entry) => entry.group) : entries.reduce((map, entry) => {
+    if (!map.has(entry.group)) map.set(entry.group, []);
+    map.get(entry.group).push(entry);
+    return map;
+  }, new Map());
+  for (const [name, routes] of groups) {
+    const group = document.createElement('details');
+    group.className = 'endpoint-group';
+    group.open = Boolean(query) || ['Workspace', 'Platform', 'Audit', 'Model controls', 'Investigations', 'Service connections'].includes(name);
+    const heading = document.createElement('summary');
+    heading.textContent = name;
+    const count = document.createElement('span');
+    count.textContent = routes.length;
+    heading.append(count);
+    group.append(heading);
+    for (const entry of routes) {
+      const direct = entry.method === 'GET' && !entry.internal && !entry.path.includes('{');
+      const route = document.createElement(direct ? 'a' : 'button');
+      route.className = 'endpoint-route';
+      if (direct) {
+        route.href = entry.url;
+        if (entry.url !== '/' && entry.url !== '/admin') {
+          route.target = '_blank';
+          route.rel = 'noopener';
+        }
+      } else {
+        route.type = 'button';
+        route.setAttribute('aria-expanded', 'false');
+      }
+      const method = document.createElement('span');
+      method.className = `method ${entry.method.toLowerCase()}`;
+      method.textContent = entry.method;
+      const title = document.createElement('span');
+      title.className = 'route-name';
+      title.textContent = entry.name;
+      const path = document.createElement('small');
+      path.textContent = entry.path;
+      route.append(method, title, path);
+      group.append(route);
+      if (!direct) {
+        const detail = document.createElement('div');
+        detail.className = 'route-detail';
+        detail.hidden = true;
+        const address = document.createElement('code');
+        address.textContent = `${entry.method} ${entry.url}`;
+        const hint = document.createElement('p');
+        hint.textContent = entry.group === 'Account' ? 'Use the sign-in page or the account controls in the header.' : entry.internal
+          ? 'Internal service address. This route is accessed by the platform agents.'
+          : entry.path.includes('{')
+            ? 'Replace the file placeholder with a valid filename. Audit filenames are listed in Audit history.'
+            : entry.group === 'Model controls'
+              ? 'Use Configure run in the workspace to test or unload a model.'
+              : 'Use the workspace to start an investigation or review and approve remediation.';
+        detail.append(address, hint);
+        group.append(detail);
+        route.addEventListener('click', () => {
+          detail.hidden = !detail.hidden;
+          route.setAttribute('aria-expanded', String(!detail.hidden));
+        });
+      }
+    }
+    endpointMenu.append(group);
+  }
+  if (!entries.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = 'No matching endpoints. Try a tool name, route, GET, or POST.';
+    endpointMenu.append(empty);
+  }
+}
+
+async function loadCatalog() {
+  try {
+    const response = await fetch('/admin/api/endpoints?catalog=true');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    catalog = payload.entries;
+    renderCatalog();
+  } catch (error) {
+    endpointMenu.textContent = `Endpoint directory unavailable: ${error.message}`;
+    const retry = document.createElement('button');
+    retry.textContent = 'Retry directory';
+    retry.addEventListener('click', loadCatalog);
+    endpointMenu.append(retry);
+    catalogCount.textContent = 'Unavailable';
+  }
+}
+catalogSearch.addEventListener('input', renderCatalog);
+loadCatalog();

@@ -1,22 +1,39 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Advanced Vanguard for Rapid Containment (AVRC)</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-  </head>
-  <body>
-    <main class="app">
-      <aside class="sidebar">
-        <div>
-          <p class="eyebrow">AVRC</p>
-          <h1>Advanced Vanguard for Rapid Containment</h1>
-          <p class="summary">Route vulnerability prompts through scan, enrichment, remediation, verification, and reporting agents.</p>
-          <p class="summary" style="margin-top:10px"><a href="/admin" style="color:#174ea6;font-weight:800;text-decoration:none">Open Admin Endpoint Console</a></p>
-        </div>
-
-        <section class="settings" aria-label="Run settings">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f3f5f8">
+<title>Quantum cyber science</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/corporate.css">
+</head>
+<body>
+<header class="site-header">
+<a class="brand-lockup" href="/" aria-label="Quantum cyber science home">
+<span class="brand-symbol">Q<span>
+</span>
+</span>
+<span>Quantum<span class="brand-sub">cyber science</span>
+</span>
+</a>
+<nav aria-label="Main navigation">
+<a href="/" class="workspace-link">Workspace</a>
+<a href="/admin" class="directory-link">Endpoint directory <span>&#8599;</span>
+</a>
+</nav>
+<div class="account-menu"><span><strong id="account-name">Account</strong><small id="account-role">Loading</small></span><button id="sign-out" type="button">Sign out</button></div>
+</header>
+<main class="app">
+<div class="workspace-top">
+<div>
+<p class="eyebrow">SECURITY OPERATIONS</p>
+<h1>Security operations workspace</h1>
+</div>
+<details class="settings-drawer">
+<summary>Configure run <span>&#9881;</span>
+</summary>
+<section class="settings" aria-label="Run settings">
           <div class="llm-panel">
             <div class="panel-title">
               <span>Local LLM</span>
@@ -68,41 +85,50 @@
             Approved
           </label>
         </section>
-
-        <section class="examples" aria-label="Example prompts">
-          <button type="button" data-prompt="Scan APP-00001 for vulnerabilities">APP-00001</button>
-          <button type="button" data-prompt="Check APP-00015 container image for CVEs">Container</button>
-          <button type="button" data-prompt="Run security scan on payments-service in production">Payments</button>
-          <button type="button" data-prompt="Scan APP-00042 repo and fix dependencies">Dependencies</button>
-        </section>
-      </aside>
-
-      <section class="chat-shell">
-        <!-- Dashboard Panel -->
-        <section id="dashboard" class="dashboard">
-          <div id="dashboard-banner" class="dashboard-banner">
-            <div class="banner-icon">🛡️</div>
-            <div class="banner-content">
-              <h2>AVRC &mdash; Advanced cyberhygiene doctor</h2>
-              <p>Provide an <strong>APP-ID</strong> or application name to begin scanning. The system will automatically:</p>
-              <ul>
-                <li>Resolve application context from inventory (1000+ apps)</li>
-                <li>Run multi-tool security scans (Trivy, Semgrep, Renovate, OSV, ZAP…)</li>
-                <li>Deduplicate & enrich findings with CVE intelligence</li>
-                <li>Propose remediation and open pull requests on Forgejo</li>
-              </ul>
-              <p class="banner-hint">💡 Try: <code>Scan APP-00001</code> or <code>Fix loans-service-0002</code></p>
-            </div>
-          </div>
-
-          <div id="dashboard-report" class="dashboard-report hidden">
+</details>
+</div>
+<p class="access-note analyst-note">Analyst access: investigations and findings. Remediation requires an administrator.</p><p class="access-note auditor-note">Auditor access: read-only visibility. Open the endpoint directory to review services and audit records.</p>
+<section class="workspace-grid">
+<section class="chat-shell" aria-label="Security conversation">
+<header class="chat-header">
+<div>
+<span class="signal-dot">
+</span>
+<strong>Security analyst assistant</strong>
+</div>
+<span id="connection-status" role="status">Ready</span>
+</header>
+<section id="dashboard" class="dashboard">
+<div id="dashboard-banner" class="dashboard-banner">
+<p class="eyebrow">VULNERABILITY MANAGEMENT</p>
+<h2>Investigate security exposure.<br>
+<span>Prioritize the next action.</span>
+</h2>
+<p>Investigate an application, understand its exposure,<br class="desktop-break"> and turn findings into a plan of action.</p>
+<div class="examples" aria-label="Example prompts">
+<button type="button" data-prompt="Scan APP-00001 for vulnerabilities">
+<span>01</span> Investigate an application <b>&#8599;</b>
+</button>
+<button type="button" data-prompt="Check APP-00015 container image for CVEs">
+<span>02</span> Inspect a container <b>&#8599;</b>
+</button>
+<button type="button" data-prompt="Run security scan on payments-service in production">
+<span>03</span> Assess production risk <b>&#8599;</b>
+</button>
+<button type="button" data-prompt="Scan APP-00042 repo and fix dependencies">
+<span>04</span> Resolve dependency issues <b>&#8599;</b>
+</button>
+</div>
+</div>
+<div id="dashboard-report" class="dashboard-report hidden">
             <div class="report-header">
               <div class="report-title">
                 <h2 id="report-app-name">—</h2>
                 <span id="report-app-id" class="pill">—</span>
                 <span id="report-env" class="pill env-pill">—</span>
               </div>
-              <div class="report-timestamp" id="report-timestamp"></div>
+              <div class="report-timestamp" id="report-timestamp">
+</div>
             </div>
 
             <div class="vuln-cards">
@@ -126,20 +152,36 @@
 
             <div class="report-details">
               <div class="report-col">
-                <h3>Scan Summary</h3>
+                <h3>Investigation overview</h3>
                 <table class="report-table" id="report-summary-table">
                   <tbody>
-                    <tr><td>Agents Invoked</td><td id="rpt-agents">—</td></tr>
-                    <tr><td>Tools Executed</td><td id="rpt-tools">—</td></tr>
-                    <tr><td>Unique CVEs</td><td id="rpt-unique-cves">—</td></tr>
-                    <tr><td>Duplicates Removed</td><td id="rpt-dupes">—</td></tr>
-                    <tr><td>Scan Scopes</td><td id="rpt-scopes">—</td></tr>
+                    <tr>
+<td>Agents Invoked</td>
+<td id="rpt-agents">—</td>
+</tr>
+                    <tr>
+<td>Tools Executed</td>
+<td id="rpt-tools">—</td>
+</tr>
+                    <tr>
+<td>Unique CVEs</td>
+<td id="rpt-unique-cves">—</td>
+</tr>
+                    <tr>
+<td>Duplicates Removed</td>
+<td id="rpt-dupes">—</td>
+</tr>
+                    <tr>
+<td>Scan Scopes</td>
+<td id="rpt-scopes">—</td>
+</tr>
                   </tbody>
                 </table>
               </div>
               <div class="report-col">
-                <h3>Top Findings</h3>
-                <ul id="report-findings" class="findings-list"></ul>
+                <h3>Priority findings</h3>
+                <ul id="report-findings" class="findings-list">
+</ul>
               </div>
             </div>
 
@@ -147,7 +189,7 @@
               <div class="hitl-header">
                 <span class="hitl-icon">⚠️</span>
                 <div>
-                  <strong>Human-in-the-Loop Approval Required</strong>
+                  <strong>Review the remediation plan</strong>
                   <p id="hitl-message">Remediation actions are ready. Review findings above and approve to proceed with PR creation and patching.</p>
                 </div>
               </div>
@@ -159,37 +201,64 @@
             </div>
           </div>
         </section>
-
-        <header class="chat-header">
-          <div>
-            <strong>Advanced Vanguard for Rapid Containment</strong>
-            <span id="connection-status">Ready</span>
-          </div>
-        </header>
-
-        <section id="messages" class="messages" aria-live="polite">
-          <article class="message assistant">
-            <div class="avatar">A</div>
-            <div class="bubble">
-              <p><strong>Welcome to Advanced Vanguard for Rapid Containment (AVRC).</strong> I scan applications for vulnerabilities and prepare remediation pull requests.</p>
-              <p>To get started, tell me an <strong>APP-ID</strong> (e.g. <code>APP-00042</code>) or an application name. I'll look it up in the inventory, identify scan targets, and run the appropriate security tools.</p>
-              <p style="font-size:0.85em;opacity:0.8">Example: "Scan APP-00015" or "Check payments-service for CVEs"</p>
-            </div>
-          </article>
-        </section>
-
-        <form id="chat-form" class="composer">
-          <textarea
-            id="prompt"
-            name="prompt"
-            rows="2"
-            placeholder="Enter APP-ID or app name, e.g. &quot;Scan APP-00042&quot; or &quot;Fix CVEs in loans-service&quot;"
-          ></textarea>
-          <button type="submit">Send</button>
-        </form>
-      </section>
-    </main>
-
-    <script type="module" src="/static/index.js"></script>
-  </body>
+<section id="messages" class="messages" aria-label="Conversation" aria-live="polite">
+<article class="message assistant">
+<div class="avatar">Q</div>
+<div class="bubble">
+<p>Start with an <strong>APP-ID or application name.</strong> I&#8217;ll identify the targets and coordinate the security tools. You can review findings before approving remediation.</p>
+</div>
+</article>
+</section>
+<form id="chat-form" class="composer">
+<label for="prompt" class="sr-only">Message Security analyst assistant</label>
+<textarea id="prompt" name="prompt" rows="2" placeholder="What would you like to investigate?">
+</textarea>
+<div class="composer-footer">
+<span>APP-ID, repository, or application name <i>Enter to send &middot; Shift + Enter for a new line</i>
+</span>
+<button type="submit">Run investigation <span>&#8599;</span>
+</button>
+</div>
+</form>
+<p class="chat-footnote">SPECIALIST AGENT WORKFLOWS &nbsp; / &nbsp; REVIEWED BY YOUR TEAM</p>
+</section>
+<aside class="mission-panel">
+<div class="program-badge"><span class="program-icon">Q</span><div><strong>Security governance</strong><p>Role-based oversight</p></div></div>
+<p class="eyebrow">OPERATIONAL WORKFLOW</p>
+<h2>Coordinated security.<br>Clear accountability.</h2>
+<ol class="mission-steps">
+<li>
+<span>01</span>
+<div>
+<strong>Discover</strong>
+<p>Resolve your application and map its scan targets.</p>
+</div>
+</li>
+<li>
+<span>02</span>
+<div>
+<strong>Understand</strong>
+<p>Correlate findings with vulnerability intelligence.</p>
+</div>
+</li>
+<li>
+<span>03</span>
+<div>
+<strong>Remediate</strong>
+<p>Review proposed fixes and approve the next step.</p>
+</div>
+</li>
+</ol>
+<a class="directory-cta" href="/admin">
+<span>EXPLORE THE PLATFORM<strong>Platform endpoints.<br>Centralized visibility.</strong>
+</span>
+<b>&#8599;</b>
+</a>
+<p class="side-note">Tool connectivity and response details are available in the endpoint directory.</p>
+</aside>
+</section>
+</main>
+<script type="module" src="/static/index.js">
+</script>
+</body>
 </html>

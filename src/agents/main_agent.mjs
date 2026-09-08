@@ -47,7 +47,7 @@ export class MainAgent {
       };
     }
 
-    if (this.requiresApproval(request)) {
+    if (!request.readOnly && this.requiresApproval(request)) {
       emit({
         type: 'progress',
         agent: 'policy_enforcer',
@@ -70,6 +70,10 @@ export class MainAgent {
     }
 
     const routePlan = this.createRoutePlan(request.prompt, request.scanScopes ?? []);
+    if (request.readOnly && routePlan.scanSteps.some((step) => /remediat|fix|patch|upgrade|create|write|import/i.test(step.operation || 'scan'))) {
+      return { status: 'blocked', route: ['policy_enforcer'], steps: [], message: 'Analysts can investigate vulnerabilities. An administrator must perform remediation.' };
+    }
+
     emit({
       type: 'route',
       agent: 'main_agent',
@@ -157,6 +161,18 @@ export class MainAgent {
         lookups: cveLookups.map((lookup) => lookup.data),
       },
     };
+
+    if (request.readOnly) {
+      return {
+        status: 'success', route: routePlan.route,
+        steps: [
+          ...scanResults.map((step) => this.toolStep(step.agent, step.tool, step.operation || 'scan', step.result)),
+          { agent: 'cve_intelligence_agent', tool: 'dedupe_engine', status: 'success', summary: 'Findings correlated and enriched.', data: deduplicatedFindings },
+          { agent: 'cve_intelligence_agent', tool: 'cve_lookup_tool', status: cveResult.status, summary: 'Vulnerability intelligence collected.', data: cveResult.data },
+        ],
+        message: 'Investigation complete. Review the findings with an administrator to proceed with remediation.',
+      };
+    }
 
     const remediationResult = await this.executeTool('remediation_decision_tool', 'selectStrategy', {
       finding: cveResult.data,
@@ -271,7 +287,7 @@ export class MainAgent {
           data: notificationResult.data,
         },
       ],
-      message: 'AVRC scan, enrichment, and remediation flow completed.',
+      message: 'Quantum cyber science scan, enrichment, and remediation flow completed.',
     };
 
     emit({
@@ -457,7 +473,7 @@ export class MainAgent {
 
   defaultTargetFor(kind) {
     const targets = {
-      defectdojo: 'AVRC Demo Product',
+      defectdojo: 'Quantum cyber science Demo Product',
       pipeline: '.github/workflows',
       container: 'node:18',
       dependency: 'package-lock.json',
@@ -593,7 +609,7 @@ export class MainAgent {
                 type: 'application',
                 name: request.applicationName ?? 'unknown-application',
               },
-              tools: [{ vendor: 'AVRC', name: 'trivy_scan_tool', version: 'fallback' }],
+              tools: [{ vendor: 'Quantum cyber science', name: 'trivy_scan_tool', version: 'fallback' }],
             },
             components: [],
           };
@@ -650,7 +666,7 @@ export class MainAgent {
         {
           role: 'system',
           content:
-            'You are the AVRC (Advanced Vanguard for Rapid Containment) repo remediation generator. Return only strict JSON. Generate a safe pull-request-ready fix plan based on deduplicated CVE data and remediation guidance. Never invent destructive changes. Prefer dependency upgrades, lockfile updates, config hardening, and clear verification commands.',
+            'You are the Quantum cyber science repo remediation generator. Return only strict JSON. Generate a safe pull-request-ready fix plan based on deduplicated CVE data and remediation guidance. Never invent destructive changes. Prefer dependency upgrades, lockfile updates, config hardening, and clear verification commands.',
         },
         {
           role: 'user',
@@ -705,7 +721,7 @@ export class MainAgent {
 
   buildPullRequestPayload(request, fix, cveData) {
     const appName = request.applicationName ?? 'avrc-app';
-    const title = fix.title ?? `AVRC remediation for ${appName}`;
+    const title = fix.title ?? `Quantum cyber science remediation for ${appName}`;
 
     return {
       applicationName: appName,
@@ -714,7 +730,7 @@ export class MainAgent {
       newBranch: fix.branchName ?? `avrc/remediate-${appName}`.toLowerCase().replace(/[^a-z0-9/_-]+/g, '-'),
       prTitle: title,
       prBody: [
-        fix.summary ?? 'Automated AVRC remediation PR request.',
+        fix.summary ?? 'Automated Quantum cyber science remediation PR request.',
         '',
         `Deduplicated CVEs: ${(cveData?.uniqueCves ?? []).map((finding) => finding.cve).join(', ') || 'none'}`,
         '',
@@ -743,7 +759,7 @@ export class MainAgent {
     return {
       source: 'deterministic-fallback',
       model: this.selectedModel(request.llmModel),
-      title: `AVRC remediation for ${cveIds[0] ?? 'repo vulnerabilities'} in ${appName}`,
+      title: `Quantum cyber science remediation for ${cveIds[0] ?? 'repo vulnerabilities'} in ${appName}`,
       branchName: `avrc/remediate-${appName}`.toLowerCase().replace(/[^a-z0-9/_-]+/g, '-'),
       summary:
         'Update vulnerable dependencies according to CVE advisory guidance, refresh lockfiles, and verify with security scans before merge.',

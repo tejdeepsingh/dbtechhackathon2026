@@ -1,3 +1,5 @@
+import { initializeSession } from './session.js';
+const currentUser = await initializeSession();
 const form = document.querySelector('#chat-form');
 const promptInput = document.querySelector('#prompt');
 const environmentInput = document.querySelector('#environment');
@@ -13,9 +15,9 @@ const unloadAfterTestInput = document.querySelector('#llm-unload-after-test');
 const refreshModelsButton = document.querySelector('#refresh-models');
 const testLlmButton = document.querySelector('#test-llm');
 const unloadLlmButton = document.querySelector('#unload-llm');
-const sessionId = sessionStorage.getItem('avrcSessionId') || crypto.randomUUID();
+const sessionId = sessionStorage.getItem(`qcsSession:${currentUser.username}`) || crypto.randomUUID();
 
-sessionStorage.setItem('avrcSessionId', sessionId);
+sessionStorage.setItem(`qcsSession:${currentUser.username}`, sessionId);
 
 const PIPELINE_STAGES = [
   { key: 'intake', label: 'Intake', words: ['Reading prompt', 'Finding app context', 'Confirming scope'] },
@@ -188,7 +190,7 @@ function addMessage(role, html) {
   const article = document.createElement('article');
   article.className = `message ${role}`;
   article.innerHTML = `
-    <div class="avatar">${role === 'user' ? 'U' : 'A'}</div>
+    <div class="avatar">${role === 'user' ? 'You' : 'Q'}</div>
     <div class="bubble">${html}</div>
   `;
   messages.append(article);
@@ -728,14 +730,14 @@ function showDashboard(payload) {
   findingsList.innerHTML = '';
   const top = allFindings.slice(0, 8);
   if (top.length === 0) {
-    findingsList.innerHTML = '<li style="color:#718096">No individual findings extracted</li>';
+    findingsList.innerHTML = '<li class="muted">No individual findings extracted</li>';
   }
   for (const f of top) {
     const sev = (f.severity ?? f.risk ?? 'medium').toLowerCase();
     const name = f.cve ?? f.id ?? f.name ?? f.package ?? '—';
     const pkg = f.package ?? f.component ?? '';
     const li = document.createElement('li');
-    li.innerHTML = `<span class="sev-badge ${escapeHtml(sev)}">${escapeHtml(sev)}</span> <strong>${escapeHtml(name)}</strong> ${pkg ? `<span style="color:#718096">${escapeHtml(pkg)}</span>` : ''}`;
+    li.innerHTML = `<span class="sev-badge ${escapeHtml(sev)}">${escapeHtml(sev)}</span> <strong>${escapeHtml(name)}</strong> ${pkg ? `<span class="muted">${escapeHtml(pkg)}</span>` : ''}`;
     findingsList.appendChild(li);
   }
 
@@ -897,10 +899,10 @@ function updateDashboardAfterRemediation(payload) {
     : (Number.isFinite(parsedFromUrl) ? parsedFromUrl : '?');
   const status = payload.status === 'success' ? 'approved' : 'failed';
 
-  hitlPanel.style.borderColor = status === 'approved' ? '#16a34a' : '#dc2626';
+  hitlPanel.style.borderColor = status === 'approved' ? '#2b7552' : '#b8333b';
   hitlPanel.style.background = status === 'approved'
-    ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
-    : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)';
+    ? '#edf7f0'
+    : '#fff0f1';
 
   const header = hitlPanel.querySelector('.hitl-header');
   if (header) {

@@ -1,0 +1,1 @@
+us-central1-docker.pkg.dev/avrc-doctor/avrc/avrc-orchestrator:corporate-demo-20260907-004908

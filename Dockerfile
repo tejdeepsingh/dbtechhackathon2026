@@ -7,6 +7,8 @@ COPY config ./config
 COPY data ./data
 COPY src ./src
 
+RUN npm run build
+
 ENV NODE_ENV=production
 ENV PORT=3000
 

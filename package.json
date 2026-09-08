@@ -1,13 +1,14 @@
 {
-  "name": "avrc-agentic-framework",
+  "name": "quantum-cyber-science",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node src/server.mjs",
-    "build": "node --check src/server.mjs",
+    "build": "node --check src/server.mjs && node --check src/index.js && node --check src/admin.js && node --check src/agents/main_agent.mjs && node --check src/agents/scanner_agents.mjs && node --check src/auth.mjs && node --check src/session.js && node --check src/login.js",
     "start": "node src/server.mjs",
-    "seed:fake-apps": "node scripts/seed-fake-apps.mjs --count 1000"
+    "seed:fake-apps": "node scripts/seed-fake-apps.mjs --count 1000",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {},
   "devDependencies": {

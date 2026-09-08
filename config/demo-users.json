@@ -1,0 +1,20 @@
+[
+  {
+    "username": "demo.admin",
+    "role": "administrator",
+    "salt": "c7156d731420ae6fb2bcebe6259df41a",
+    "passwordHash": "d0af150ddc706525bedc3aa8701fb16d55b984cc56b67bc158093050bd0d3380a92ee25717eee5f2bca703efee0bf2f2180741ae3af5b14d7aafe9312dc1f560"
+  },
+  {
+    "username": "demo.analyst",
+    "role": "analyst",
+    "salt": "6fc4e3090b82e59191e8b03ce2e528d0",
+    "passwordHash": "e6605edc5f8fb48c237ed0c01e982d37c0ef8b35ca1a087535f9515a3bb8b05a9c2991bf66727158687257ac641d4d6134d3bfe8a915b0b4175726869bfca74a"
+  },
+  {
+    "username": "demo.auditor",
+    "role": "auditor",
+    "salt": "c54a52af3290862cf340dd9b83ae30ce",
+    "passwordHash": "00e27f2d0c01603464dc80e9ddb5b470ac85bbd129d6a73cb877e4c39c9db88acf3a9d2c8da92fd78f4f6c73bf0ec45a51def6b0205f4740702868dd748073f2"
+  }
+]

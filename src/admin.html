@@ -3,24 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AVRC Admin Endpoint Console</title>
-    <link rel="stylesheet" href="/static/admin.css" />
-  </head>
-  <body>
+    <title>Endpoint directory | Quantum cyber science</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+<link rel="stylesheet" href="/static/admin.css" />
+  <link rel="stylesheet" href="/static/corporate.css">
+</head>
+  <body class="directory-page">
+<header class="site-header">
+<a class="brand-lockup" href="/" aria-label="Quantum cyber science home">
+<span class="brand-symbol">Q<span>
+</span>
+</span>
+<span>Quantum<span class="brand-sub">cyber science</span>
+</span>
+</a>
+<nav aria-label="Main navigation">
+<a href="/" class="workspace-link">Workspace</a>
+<a href="/admin" class="directory-link">Endpoint directory <span>&#8599;</span>
+</a>
+</nav>
+<div class="account-menu"><span><strong id="account-name">Account</strong><small id="account-role">Loading</small></span><button id="sign-out" type="button">Sign out</button></div>
+</header>
     <main class="admin-app">
       <header class="topbar">
         <div class="brand">
-          <p class="eyebrow">AVRC ADMIN</p>
-          <h1>GET Endpoint Console</h1>
-          <p class="subtitle">Live visibility for health, inventory, audit, model, and tool endpoints.</p>
+          <p class="eyebrow">PLATFORM OPERATIONS</p>
+          <h1>Endpoint and service directory</h1>
+          <p class="subtitle">Browse every application route and configured tool endpoint. Inspect live service health below.</p>
         </div>
         <div class="top-actions">
-          <a class="ghost-btn" href="/">Back to Chat</a>
+          <a class="ghost-btn" href="/">Open workspace</a>
           <button id="refresh-all" class="primary-btn" type="button">Refresh All</button>
         </div>
       </header>
 
-      <section class="stats" aria-label="endpoint summary">
+      <section class="catalog-section">
+<div class="section-heading">
+<h2>Endpoint menu</h2>
+<span id="catalog-count">Loading routes...</span>
+</div>
+<label class="catalog-search">Find an endpoint<input id="catalog-search" type="search" placeholder="Search routes, tools, or methods...">
+</label>
+<nav id="endpoint-menu" aria-label="All endpoints">
+<p role="status">Loading endpoint directory...</p>
+</nav>
+</section>
+<div class="section-heading">
+<h2>Service health</h2>
+<span>Read-only connectivity checks</span>
+</div>
+<section class="stats" aria-label="endpoint summary">
         <article class="stat-card">
           <p>Total</p>
           <strong id="stat-total">0</strong>
@@ -57,7 +89,8 @@
         </label>
       </section>
 
-      <section id="endpoint-grid" class="endpoint-grid" aria-live="polite"></section>
+      <section id="endpoint-grid" class="endpoint-grid" aria-live="polite">
+</section>
     </main>
 
     <template id="endpoint-card-template">
@@ -80,6 +113,7 @@
       </article>
     </template>
 
-    <script type="module" src="/static/admin.js"></script>
+    <script type="module" src="/static/admin.js">
+</script>
   </body>
 </html>
